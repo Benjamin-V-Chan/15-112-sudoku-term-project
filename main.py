@@ -22,17 +22,23 @@ def loadBoards():
     return boards, solutions
 
 class Theme:
-    def __init__(self, bgColor, buttonColor, buttonBorderColor, textColor, hoverBorderColor, clickColor):
+    def __init__(self, bgColor, buttonColor, buttonBorderColor, textColor, hoverBorderColor, clickColor, gridColor, cellColor, activeColor):
         self.bgColor = bgColor
         self.buttonColor = buttonColor
         self.buttonBorderColor = buttonBorderColor
         self.textColor = textColor
         self.hoverBorderColor = hoverBorderColor
         self.clickColor = clickColor
+        self.gridColor = gridColor
+        self.cellColor = cellColor
+        self.activeColor = activeColor
 
 # Define the themes
-lightTheme = Theme(bgColor='white', buttonColor='lightgray', buttonBorderColor='black', textColor='black', hoverBorderColor='cyan', clickColor='darkgray')
-darkTheme = Theme(bgColor='black', buttonColor='darkgray', buttonBorderColor='white', textColor='white', hoverBorderColor='lightcyan', clickColor='gray')
+lightTheme = Theme(bgColor='white', buttonColor='lightgray', buttonBorderColor='black', textColor='black', hoverBorderColor='cyan', clickColor='darkgray', gridColor='black', cellColor='white', activeColor='lightSkyBlue')
+darkTheme = Theme(bgColor='black', buttonColor='darkgray', buttonBorderColor='white', textColor='white', hoverBorderColor='lightcyan', clickColor='gray', gridColor='white', cellColor='black', activeColor='lightgrey')
+redTheme = Theme(bgColor='darkred', buttonColor='red', buttonBorderColor='black', textColor='white', hoverBorderColor='lightcoral', clickColor='maroon', gridColor='black', cellColor='red', activeColor='pink')
+blueTheme = Theme(bgColor='darkblue', buttonColor='blue', buttonBorderColor='black', textColor='white', hoverBorderColor='lightblue', clickColor='navy', gridColor='black', cellColor='blue', activeColor='skyblue')
+greenTheme = Theme(bgColor='darkgreen', buttonColor='green', buttonBorderColor='black', textColor='white', hoverBorderColor='lightgreen', clickColor='forestgreen', gridColor='black', cellColor='green', activeColor='lightgreen')
 
 class Button:
     def __init__(self, x, y, width, height, text, theme, textSize=20):
@@ -71,7 +77,7 @@ def onAppStart(app):
     app.menuBarButtonBuffer = 10
     app.buttonWidth = 100
     app.activeScreen = 'splash'
-    app.theme = darkTheme
+    app.theme = lightTheme
     app.splashScreen = SplashScreen(app)
     app.playScreen = PlayScreen(app)
     app.boards, app.solutions = loadBoards()
@@ -148,10 +154,10 @@ class PlayScreen:
         self.app.gridPaddingY = 0
         self.app.cellBorderThickness = 2
         self.app.grid = [[None if cell == 0 else cell for cell in row] for row in self.app.selectedBoard]
-        self.app.gridColors = [['white' for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
+        self.app.gridColors = [[self.app.theme.cellColor for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
         self.app.activeRow, self.app.activeCol = 0, 0
         self.app.isGuessMode = False
-        self.app.activeColor = 'cyan'
+        self.app.activeColor = self.app.theme.activeColor
         self.app.gridColors[self.app.activeRow][self.app.activeCol] = self.app.activeColor
         self.app.cellGuesses = [[[None for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
         self.app.fontSize = 22
@@ -218,7 +224,7 @@ class PlayScreen:
 def updateGridDimensions(app):
     app.gridWidth = app.width
     app.gridHeight = app.height - app.menuBarHeight
-    app.activeColor = 'lightgrey' if app.isGuessMode else 'lightSkyBlue'
+    app.activeColor = app.theme.activeColor if app.isGuessMode else app.theme.activeColor
     app.cellWidth = app.gridWidth / app.gridSize
     app.cellHeight = app.gridHeight / app.gridSize
 
@@ -251,7 +257,7 @@ def onKeyPress(app, key):
             app.isGuessMode = not app.isGuessMode
         elif key == 'backspace':
             app.grid[app.activeRow][app.activeCol] = None
-            app.gridColors[app.activeRow][app.activeCol] = 'white'
+            app.gridColors[app.activeRow][app.activeCol] = app.theme.cellColor
         elif key in ['up', 'down', 'left', 'right']:
             navigateGrid(app, key)
 
@@ -264,7 +270,7 @@ def navigateGrid(app, direction):
         app.activeCol -= 1
     elif direction == 'right' and app.activeCol < app.gridSize - 1:
         app.activeCol += 1
-    app.gridColors = [['white' for _ in range(app.gridSize)] for _ in range(app.gridSize)]
+    app.gridColors = [[app.theme.cellColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
     app.gridColors[app.activeRow][app.activeCol] = app.activeColor
 
 def redrawAll(app):
@@ -276,7 +282,7 @@ def redrawAll(app):
 def onStep(app):
     updateGridDimensions(app)
     if not app.isIncorrect:
-        app.gridColors = [['white' for _ in range(app.gridSize)] for _ in range(app.gridSize)]
+        app.gridColors = [[app.theme.cellColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
         app.gridColors[app.activeRow][app.activeCol] = app.activeColor
     app.fontSize = (calculateCellSize(app)[0] + calculateCellSize(app)[0]) // 4
     if app.remainingLives == 0: app.isGameOver = True
@@ -334,17 +340,17 @@ def drawGrid(app):
             drawGridCell(app, row, col)
 
 def drawGridBorder(app):
-    drawRect(app.gridPaddingX, app.gridPaddingY, app.gridWidth, app.gridHeight, fill=None, border='black', borderWidth=2 * app.cellBorderThickness)
+    drawRect(app.gridPaddingX, app.gridPaddingY, app.gridWidth, app.gridHeight, fill=None, border=app.theme.gridColor, borderWidth=2 * app.cellBorderThickness)
     for i in range(1, 3):
-        drawLine(app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY, app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY + app.gridHeight, lineWidth=4, fill='black')
-        drawLine(app.gridPaddingX, app.gridPaddingY + app.gridHeight * i / 3, app.gridPaddingX + app.gridWidth, app.gridPaddingY + app.gridHeight * i / 3, lineWidth=4, fill='black')
+        drawLine(app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY, app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY + app.gridHeight, lineWidth=4, fill=app.theme.gridColor)
+        drawLine(app.gridPaddingX, app.gridPaddingY + app.gridHeight * i / 3, app.gridPaddingX + app.gridWidth, app.gridPaddingY + app.gridHeight * i / 3, lineWidth=4, fill=app.theme.gridColor)
 
 def drawGridCell(app, row, col):
     cellLeft, cellTop = getGridCellLeftTop(app, row, col)
     cellWidth, cellHeight = calculateCellSize(app)
     drawRect(cellLeft, cellTop, cellWidth, cellHeight, fill=app.gridColors[row][col], border='grey', borderWidth=app.cellBorderThickness)
     if app.grid[row][col] is not None:
-        drawLabel(app.grid[row][col], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill='black')
+        drawLabel(app.grid[row][col], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill=app.theme.textColor)
     for i in range(9):
         if app.cellGuesses[row][col][i] is not None:
             num = app.cellGuesses[row][col][i]
