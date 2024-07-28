@@ -21,47 +21,166 @@ def loadBoards():
     
     return boards, solutions
 
-def onAppStart(app):
-    app.difficulty = 'easy'
-    app.boards, app.solutions = loadBoards()
-    app.selectedBoardIndex = random.randint(0, len(app.boards[app.difficulty]) - 1)
-    app.selectedBoard = app.boards[app.difficulty][app.selectedBoardIndex]
-    app.solutionBoard = app.solutions[app.difficulty][app.selectedBoardIndex]
+class Button:
+    def __init__(self, x, y, width, height, color, text, textSize=20, textColor='white', borderColor='black', hoverBorderColor='cyan'):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+        self.text = text
+        self.textSize = textSize
+        self.textColor = textColor
+        self.borderColor = borderColor
+        self.hoverBorderColor = hoverBorderColor
+        self.isHovered = False
 
-    app.gridSize = 9
-    app.gridPaddingX = 0
-    app.gridPaddingY = 0
-    app.windowWidth, app.windowHeight = 600, 700
-    app.cellBorderThickness = 2
-    app.grid = [[None if cell == 0 else cell for cell in row] for row in app.selectedBoard]
-    app.gridColors = [['white' for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.activeRow, app.activeCol = 0, 0
-    app.isGuessMode = False
-    app.activeColor = 'cyan'
-    app.gridColors[app.activeRow][app.activeCol] = app.activeColor
-    app.cellGuesses = [[[None for _ in range(app.gridSize)] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.fontSize = 22
-    app.remainingLives = 3
-    app.isIncorrect = False
-    app.isGameOver = False
-    app.theme = 'light'
-    updateGridDimensions(app)
-    updateTheme(app)
+    def draw(self):
+        borderColor = self.hoverBorderColor if self.isHovered else self.borderColor
+        drawRect(self.x, self.y, self.width, self.height, fill=self.color, border=borderColor)
+        drawLabel(self.text, self.x + self.width / 2, self.y + self.height / 2, size=self.textSize, fill=self.textColor, bold=True, align='center')
+
+    def isClicked(self, mouseX, mouseY):
+        return self.x <= mouseX <= self.x + self.width and self.y <= mouseY <= self.y + self.height
+
+    def onHover(self, mouseX, mouseY):
+        self.isHovered = self.isClicked(mouseX, mouseY)
+
+def onAppStart(app):
+    app.width = 600
+    app.height = 600
+    app.menuBarHeight = 50
+    app.menuBarButtonBuffer = 10
+    app.buttonWidth = 100
+    app.activeScreen = 'splash'
+    app.splashScreen = SplashScreen(app)
+    app.playScreen = PlayScreen(app)
+    app.boards, app.solutions = loadBoards()
+    app.splashScreen.setup()
+    app.playScreen.setup()
+
+class SplashScreen:
+    def __init__(self, app):
+        self.app = app
+
+    def setup(self):
+        self.colors = [rgb(255, 99, 71), rgb(255, 69, 0), rgb(255, 140, 0), rgb(255, 165, 0), rgb(255, 215, 0)]
+        self.buttonColors = [rgb(255, 228, 225), rgb(255, 192, 203), rgb(255, 105, 180), rgb(255, 20, 147), 'black']
+        self.messages = ['easy', 'medium', 'hard', 'expert', 'evil']
+        self.buttons = [Button(125, 180 + i * 75, 150, 50, self.buttonColors[i], self.messages[i]) for i in range(5)]
+        self.words = 'SUDOKU'.split()
+
+    def onMousePress(self, mouseX, mouseY):
+        for i, button in enumerate(self.buttons):
+            if button.isClicked(mouseX, mouseY):
+                self.app.playScreen.setDifficulty(self.messages[i])
+                self.app.activeScreen = 'play'
+                return
+
+    def onHover(self, mouseX, mouseY):
+        for button in self.buttons:
+            button.onHover(mouseX, mouseY)
+
+    def draw(self):
+        drawRect(0, 0, self.app.width, self.app.height, fill='lightblue')
+        self.drawColorChangingText()
+        self.drawButtons()
+
+    def drawColorChangingText(self):
+        yOffset = 100
+        for i in range(len(self.words)):
+            x = 100 + i * 200 / 5
+            drawLabel(self.words[i], x, yOffset, bold=True, fill=self.colors[i % len(self.colors)], size=55, border='black', borderWidth=1)
+
+    def drawButtons(self):
+        for button in self.buttons:
+            button.draw()
+
+class PlayScreen:
+    def __init__(self, app):
+        self.app = app
+        self.difficulty = 'easy'
+
+    def setDifficulty(self, difficulty):
+        self.difficulty = difficulty
+        self.setup()
+
+    def setup(self):
+        self.pickNewBoard()
+
+        self.app.gridSize = 9
+        self.app.gridPaddingX = 0
+        self.app.gridPaddingY = 0
+        self.app.cellBorderThickness = 2
+        self.app.grid = [[None if cell == 0 else cell for cell in row] for row in self.app.selectedBoard]
+        self.app.gridColors = [['white' for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
+        self.app.activeRow, self.app.activeCol = 0, 0
+        self.app.isGuessMode = False
+        self.app.activeColor = 'cyan'
+        self.app.gridColors[self.app.activeRow][self.app.activeCol] = self.app.activeColor
+        self.app.cellGuesses = [[[None for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
+        self.app.fontSize = 22
+        self.app.totalLives = 3
+        self.app.remainingLives = self.app.totalLives
+        self.app.isIncorrect = False
+        self.app.isGameOver = False
+        updateGridDimensions(self.app)
+
+    def pickNewBoard(self):
+        availableBoards = len(self.app.boards[self.difficulty])
+        newBoardIndex = random.randint(0, availableBoards - 1)
+        if hasattr(self.app, 'selectedBoardIndex'):
+            while newBoardIndex == self.app.selectedBoardIndex:
+                newBoardIndex = random.randint(0, availableBoards - 1)
+        self.app.selectedBoardIndex = newBoardIndex
+        self.app.selectedBoard = self.app.boards[self.difficulty][self.app.selectedBoardIndex]
+        self.app.solutionBoard = self.app.solutions[self.difficulty][self.app.selectedBoardIndex]
+
+    def onMousePress(self, mouseX, mouseY):
+        for button in self.buttons:
+            if button.isClicked(mouseX, mouseY):
+                if button.text == 'Reset':
+                    self.pickNewBoard()
+                    self.setup()
+                elif button.text == 'Home':
+                    self.app.activeScreen = 'splash'
+                return
+        if not self.app.isGameOver:
+            self.app.activeRow, self.app.activeCol = getGridCell(self.app, mouseX, mouseY)
+            if self.app.isIncorrect:
+                self.app.isIncorrect = False
+
+    def onHover(self, mouseX, mouseY):
+        for button in self.buttons:
+            button.onHover(mouseX, mouseY)
+
+    def draw(self):
+        drawRect(0, 0, self.app.width, self.app.height, fill='white')
+        drawGrid(self.app)
+        drawGridBorder(self.app)
+        drawMenuBar(self.app)
+        self.drawButtons()
+
+    def drawButtons(self):
+        buttonHeight = self.app.menuBarHeight - 2 * self.app.menuBarButtonBuffer
+        buttonY = self.app.height - self.app.menuBarHeight + self.app.menuBarButtonBuffer
+        textY = self.app.height - (self.app.menuBarHeight / 2)
+        buttonWidth = self.app.buttonWidth
+
+        self.resetButton = Button(self.app.width / 2 - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, 'black', 'Reset')
+        self.homeButton = Button(self.app.width - buttonWidth - self.app.menuBarButtonBuffer, buttonY, buttonWidth, buttonHeight, 'black', 'Home')
+        
+        self.buttons = [self.resetButton, self.homeButton]
+
+        for button in self.buttons:
+            button.draw()
 
 def updateGridDimensions(app):
-    app.gridWidth = app.windowWidth
-    app.gridHeight = 0.85 * app.windowHeight
-    app.activeColor = 'lightgrey' if app.isGuessMode else 'cyan'
+    app.gridWidth = app.width
+    app.gridHeight = app.height - app.menuBarHeight
+    app.activeColor = 'lightgrey' if app.isGuessMode else 'lightSkyBlue'
     app.cellWidth = app.gridWidth / app.gridSize
     app.cellHeight = app.gridHeight / app.gridSize
-
-def updateTheme(app):
-    if app.theme == 'light':
-        app.bgColor = 'white'
-        app.fgColor = 'black'
-    else:
-        app.bgColor = 'black'
-        app.fgColor = 'white'
 
 def isNumberValid(app, row, col, num):
     if app.grid[row][col] == num: return True
@@ -92,7 +211,7 @@ def onKeyPress(app, key):
             app.isGuessMode = not app.isGuessMode
         elif key == 'backspace':
             app.grid[app.activeRow][app.activeCol] = None
-            app.gridColors[app.activeRow][app.activeCol] = app.bgColor
+            app.gridColors[app.activeRow][app.activeCol] = 'white'
         elif key in ['up', 'down', 'left', 'right']:
             navigateGrid(app, key)
 
@@ -105,72 +224,56 @@ def navigateGrid(app, direction):
         app.activeCol -= 1
     elif direction == 'right' and app.activeCol < app.gridSize - 1:
         app.activeCol += 1
-    app.gridColors = [[app.bgColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
+    app.gridColors = [['white' for _ in range(app.gridSize)] for _ in range(app.gridSize)]
     app.gridColors[app.activeRow][app.activeCol] = app.activeColor
 
 def redrawAll(app):
-    drawRect(0, 0, app.windowWidth, app.windowHeight, fill=app.bgColor)
-    drawGrid(app)
-    drawGridBorder(app)
-    drawMenuBar(app)
+    if app.activeScreen == 'splash':
+        app.splashScreen.draw()
+    elif app.activeScreen == 'play':
+        app.playScreen.draw()
 
 def onStep(app):
     updateGridDimensions(app)
     if not app.isIncorrect:
-        app.gridColors = [[app.bgColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
+        app.gridColors = [['white' for _ in range(app.gridSize)] for _ in range(app.gridSize)]
         app.gridColors[app.activeRow][app.activeCol] = app.activeColor
     app.fontSize = (calculateCellSize(app)[0] + calculateCellSize(app)[0]) // 4
     if app.remainingLives == 0: app.isGameOver = True
 
 def onMousePress(app, mouseX, mouseY):
-    if 10 <= mouseX <= 10 + 3 * 30 and app.windowHeight - 40 <= mouseY <= app.windowHeight - 20:
-        pass
-    elif app.windowWidth / 2 - 50 <= mouseX <= app.windowWidth / 2 + 50 and app.windowHeight - 40 <= mouseY <= app.windowHeight - 10:
-        resetBoard(app)
-    elif app.windowWidth - 120 <= mouseX <= app.windowWidth - 20 and app.windowHeight - 40 <= mouseY <= app.windowHeight - 10:
-        changeTheme(app)
-    else:
-        if not app.isGameOver:
-            app.activeRow, app.activeCol = getGridCell(app, mouseX, mouseY)
-            if app.isIncorrect:
-                app.isIncorrect = False
+    if app.activeScreen == 'splash':
+        app.splashScreen.onMousePress(mouseX, mouseY)
+    elif app.activeScreen == 'play':
+        app.playScreen.onMousePress(mouseX, mouseY)
 
-def resetBoard(app):
-    app.selectedBoardIndex = random.randint(0, len(app.boards[app.difficulty]) - 1)
-    app.selectedBoard = app.boards[app.difficulty][app.selectedBoardIndex]
-    app.solutionBoard = app.solutions[app.difficulty][app.selectedBoardIndex]
-    app.grid = [[None if cell == 0 else cell for cell in row] for row in app.selectedBoard]
-    app.gridColors = [[app.bgColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.cellGuesses = [[[None for _ in range(app.gridSize)] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.activeRow, app.activeCol = 0, 0
-    app.remainingLives = 3
-    app.isIncorrect = False
-    app.isGameOver = False
-
-def changeTheme(app):
-    app.theme = 'dark' if app.theme == 'light' else 'light'
-    updateTheme(app)
-    for row in range(app.gridSize):
-        for col in range(app.gridSize):
-            app.gridColors[row][col] = app.bgColor
-    app.gridColors[app.activeRow][app.activeCol] = app.activeColor
+def onMouseMove(app, mouseX, mouseY):
+    if app.activeScreen == 'splash':
+        app.splashScreen.onHover(mouseX, mouseY)
+    elif app.activeScreen == 'play':
+        app.playScreen.onHover(mouseX, mouseY)
 
 def drawMenuBar(app):
-    drawRect(0, 0.85 * app.windowHeight, app.windowWidth, 0.15 * app.windowHeight, fill=app.bgColor, border=app.fgColor)
-    drawLivesBar(app)
-    drawRect(app.windowWidth / 2 - 50, app.windowHeight - 40, 100, 30, fill=app.fgColor, border=app.fgColor)
-    drawLabel('Reset', app.windowWidth / 2, app.windowHeight - 25, size=15, fill=app.bgColor)
-    drawRect(app.windowWidth - 120, app.windowHeight - 40, 100, 30, fill=app.fgColor, border=app.fgColor)
-    drawLabel('Change Theme', app.windowWidth - 70, app.windowHeight - 25, size=15, fill=app.bgColor)
+    buttonHeight = app.menuBarHeight - 2 * app.menuBarButtonBuffer
+    buttonY = app.height - app.menuBarHeight + app.menuBarButtonBuffer
+    textY = app.height - (app.menuBarHeight / 2)
+    buttonWidth = app.buttonWidth
 
-def drawLivesBar(app):
-    livesColor = 'red'
-    for i in range(3):
+    # Actual Menu Bar Display
+    drawRect(0, app.height - app.menuBarHeight, app.width, app.menuBarHeight, fill='white', border='black')
+    
+    distanceBetweenLivesDisplays = app.menuBarButtonBuffer / 2
+
+    drawLives(app, buttonY, buttonHeight, distanceBetweenLivesDisplays)
+
+def drawLives(app, buttonY, buttonSize, distanceBetweenButtons):
+    livesColor = 'tomato'
+    for i in range(app.totalLives):
         if i < app.remainingLives:
             fillColor = 'lightgreen'
         else:
             fillColor = livesColor
-        drawRect(10 + i*30, app.windowHeight - 40, 20, 20, fill=fillColor, border=app.fgColor)
+        drawRect(app.menuBarButtonBuffer + i * (buttonSize + distanceBetweenButtons), buttonY, buttonSize, buttonSize, fill=fillColor, border='black')
 
 def getGridCell(app, x, y):
     cellWidth, cellHeight = calculateCellSize(app)
@@ -185,17 +288,17 @@ def drawGrid(app):
             drawGridCell(app, row, col)
 
 def drawGridBorder(app):
-    drawRect(app.gridPaddingX, app.gridPaddingY, app.gridWidth, app.gridHeight, fill=None, border=app.fgColor, borderWidth=2 * app.cellBorderThickness)
+    drawRect(app.gridPaddingX, app.gridPaddingY, app.gridWidth, app.gridHeight, fill=None, border='black', borderWidth=2 * app.cellBorderThickness)
     for i in range(1, 3):
-        drawLine(app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY, app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY + app.gridHeight, lineWidth=4, fill=app.fgColor)
-        drawLine(app.gridPaddingX, app.gridPaddingY + app.gridHeight * i / 3, app.gridPaddingX + app.gridWidth, app.gridPaddingY + app.gridHeight * i / 3, lineWidth=4, fill=app.fgColor)
+        drawLine(app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY, app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY + app.gridHeight, lineWidth=4, fill='black')
+        drawLine(app.gridPaddingX, app.gridPaddingY + app.gridHeight * i / 3, app.gridPaddingX + app.gridWidth, app.gridPaddingY + app.gridHeight * i / 3, lineWidth=4, fill='black')
 
 def drawGridCell(app, row, col):
     cellLeft, cellTop = getGridCellLeftTop(app, row, col)
     cellWidth, cellHeight = calculateCellSize(app)
     drawRect(cellLeft, cellTop, cellWidth, cellHeight, fill=app.gridColors[row][col], border='grey', borderWidth=app.cellBorderThickness)
     if app.grid[row][col] is not None:
-        drawLabel(app.grid[row][col], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill=app.fgColor)
+        drawLabel(app.grid[row][col], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill='black')
     for i in range(9):
         if app.cellGuesses[row][col][i] is not None:
             num = app.cellGuesses[row][col][i]
@@ -214,4 +317,4 @@ def calculateCellSize(app):
     cellHeight = app.gridHeight / app.gridSize
     return cellWidth, cellHeight
 
-runApp(width=600, height=700)
+runApp(width=600, height=600)
