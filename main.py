@@ -21,30 +21,48 @@ def loadBoards():
     
     return boards, solutions
 
+class Theme:
+    def __init__(self, bgColor, buttonColor, buttonBorderColor, textColor, hoverBorderColor, clickColor):
+        self.bgColor = bgColor
+        self.buttonColor = buttonColor
+        self.buttonBorderColor = buttonBorderColor
+        self.textColor = textColor
+        self.hoverBorderColor = hoverBorderColor
+        self.clickColor = clickColor
+
+# Define the themes
+lightTheme = Theme(bgColor='white', buttonColor='lightgray', buttonBorderColor='black', textColor='black', hoverBorderColor='cyan', clickColor='darkgray')
+darkTheme = Theme(bgColor='black', buttonColor='darkgray', buttonBorderColor='white', textColor='white', hoverBorderColor='lightcyan', clickColor='gray')
+
 class Button:
-    def __init__(self, x, y, width, height, color, text, textSize=20, textColor='white', borderColor='black', hoverBorderColor='cyan'):
+    def __init__(self, x, y, width, height, text, theme, textSize=20):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.color = color
         self.text = text
         self.textSize = textSize
-        self.textColor = textColor
-        self.borderColor = borderColor
-        self.hoverBorderColor = hoverBorderColor
+        self.theme = theme
         self.isHovered = False
+        self.isClicked = False
 
     def draw(self):
-        borderColor = self.hoverBorderColor if self.isHovered else self.borderColor
-        drawRect(self.x, self.y, self.width, self.height, fill=self.color, border=borderColor)
-        drawLabel(self.text, self.x + self.width / 2, self.y + self.height / 2, size=self.textSize, fill=self.textColor, bold=True, align='center')
+        borderColor = self.theme.hoverBorderColor if self.isHovered else self.theme.buttonBorderColor
+        fillColor = self.theme.clickColor if self.isClicked else self.theme.buttonColor
+        drawRect(self.x, self.y, self.width, self.height, fill=fillColor, border=borderColor)
+        drawLabel(self.text, self.x + self.width / 2, self.y + self.height / 2, size=self.textSize, fill=self.theme.textColor, bold=True, align='center')
 
-    def isClicked(self, mouseX, mouseY):
+    def checkClicked(self, mouseX, mouseY):
         return self.x <= mouseX <= self.x + self.width and self.y <= mouseY <= self.y + self.height
 
     def onHover(self, mouseX, mouseY):
-        self.isHovered = self.isClicked(mouseX, mouseY)
+        self.isHovered = self.checkClicked(mouseX, mouseY)
+
+    def onClick(self):
+        self.isClicked = True
+
+    def onRelease(self):
+        self.isClicked = False
 
 def onAppStart(app):
     app.width = 600
@@ -53,6 +71,7 @@ def onAppStart(app):
     app.menuBarButtonBuffer = 10
     app.buttonWidth = 100
     app.activeScreen = 'splash'
+    app.theme = darkTheme
     app.splashScreen = SplashScreen(app)
     app.playScreen = PlayScreen(app)
     app.boards, app.solutions = loadBoards()
@@ -65,32 +84,48 @@ class SplashScreen:
 
     def setup(self):
         self.colors = [rgb(255, 99, 71), rgb(255, 69, 0), rgb(255, 140, 0), rgb(255, 165, 0), rgb(255, 215, 0)]
-        self.buttonColors = [rgb(255, 228, 225), rgb(255, 192, 203), rgb(255, 105, 180), rgb(255, 20, 147), 'black']
         self.messages = ['easy', 'medium', 'hard', 'expert', 'evil']
-        self.buttons = [Button(125, 180 + i * 75, 150, 50, self.buttonColors[i], self.messages[i]) for i in range(5)]
-        self.words = 'SUDOKU'.split()
+        self.buttonWidth = 150
+        self.buttonHeight = 50
+        self.buttonSpacing = 25
+        self.title = 'SUDOKU'
+        self.titleSize = 55
+        self.buttons = [
+            Button(
+                self.app.width / 2 - self.buttonWidth / 2, 
+                180 + i * (self.buttonHeight + self.buttonSpacing), 
+                self.buttonWidth, 
+                self.buttonHeight, 
+                self.messages[i], 
+                self.app.theme
+            ) for i in range(5)
+        ]
 
     def onMousePress(self, mouseX, mouseY):
         for i, button in enumerate(self.buttons):
-            if button.isClicked(mouseX, mouseY):
+            if button.checkClicked(mouseX, mouseY):
+                button.onClick()
                 self.app.playScreen.setDifficulty(self.messages[i])
                 self.app.activeScreen = 'play'
                 return
+
+    def onMouseRelease(self, mouseX, mouseY):
+        for button in self.buttons:
+            button.onRelease()
 
     def onHover(self, mouseX, mouseY):
         for button in self.buttons:
             button.onHover(mouseX, mouseY)
 
     def draw(self):
-        drawRect(0, 0, self.app.width, self.app.height, fill='lightblue')
-        self.drawColorChangingText()
+        drawRect(0, 0, self.app.width, self.app.height, fill=self.app.theme.bgColor)
+        self.drawTitle()
         self.drawButtons()
 
-    def drawColorChangingText(self):
-        yOffset = 100
-        for i in range(len(self.words)):
-            x = 100 + i * 200 / 5
-            drawLabel(self.words[i], x, yOffset, bold=True, fill=self.colors[i % len(self.colors)], size=55, border='black', borderWidth=1)
+    def drawTitle(self):
+        titleX = self.app.width / 2
+        titleY = 100
+        drawLabel(self.title, titleX, titleY, size=self.titleSize, fill=self.colors[0], bold=True, align='center', border='black', borderWidth=1)
 
     def drawButtons(self):
         for button in self.buttons:
@@ -125,6 +160,7 @@ class PlayScreen:
         self.app.isIncorrect = False
         self.app.isGameOver = False
         updateGridDimensions(self.app)
+        self.setupButtons()
 
     def pickNewBoard(self):
         availableBoards = len(self.app.boards[self.difficulty])
@@ -136,9 +172,19 @@ class PlayScreen:
         self.app.selectedBoard = self.app.boards[self.difficulty][self.app.selectedBoardIndex]
         self.app.solutionBoard = self.app.solutions[self.difficulty][self.app.selectedBoardIndex]
 
+    def setupButtons(self):
+        buttonHeight = self.app.menuBarHeight - 2 * self.app.menuBarButtonBuffer
+        buttonY = self.app.height - self.app.menuBarHeight + self.app.menuBarButtonBuffer
+        buttonWidth = self.app.buttonWidth
+
+        self.resetButton = Button(self.app.width / 2 - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, 'Reset', self.app.theme)
+        self.homeButton = Button(self.app.width - buttonWidth - self.app.menuBarButtonBuffer, buttonY, buttonWidth, buttonHeight, 'Home', self.app.theme)
+        self.buttons = [self.resetButton, self.homeButton]
+
     def onMousePress(self, mouseX, mouseY):
         for button in self.buttons:
-            if button.isClicked(mouseX, mouseY):
+            if button.checkClicked(mouseX, mouseY):
+                button.onClick()
                 if button.text == 'Reset':
                     self.pickNewBoard()
                     self.setup()
@@ -150,28 +196,22 @@ class PlayScreen:
             if self.app.isIncorrect:
                 self.app.isIncorrect = False
 
+    def onMouseRelease(self, mouseX, mouseY):
+        for button in self.buttons:
+            button.onRelease()
+
     def onHover(self, mouseX, mouseY):
         for button in self.buttons:
             button.onHover(mouseX, mouseY)
 
     def draw(self):
-        drawRect(0, 0, self.app.width, self.app.height, fill='white')
+        drawRect(0, 0, self.app.width, self.app.height, fill=self.app.theme.bgColor)
         drawGrid(self.app)
         drawGridBorder(self.app)
         drawMenuBar(self.app)
         self.drawButtons()
 
     def drawButtons(self):
-        buttonHeight = self.app.menuBarHeight - 2 * self.app.menuBarButtonBuffer
-        buttonY = self.app.height - self.app.menuBarHeight + self.app.menuBarButtonBuffer
-        textY = self.app.height - (self.app.menuBarHeight / 2)
-        buttonWidth = self.app.buttonWidth
-
-        self.resetButton = Button(self.app.width / 2 - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, 'black', 'Reset')
-        self.homeButton = Button(self.app.width - buttonWidth - self.app.menuBarButtonBuffer, buttonY, buttonWidth, buttonHeight, 'black', 'Home')
-        
-        self.buttons = [self.resetButton, self.homeButton]
-
         for button in self.buttons:
             button.draw()
 
@@ -247,6 +287,12 @@ def onMousePress(app, mouseX, mouseY):
     elif app.activeScreen == 'play':
         app.playScreen.onMousePress(mouseX, mouseY)
 
+def onMouseRelease(app, mouseX, mouseY):
+    if app.activeScreen == 'splash':
+        app.splashScreen.onMouseRelease(mouseX, mouseY)
+    elif app.activeScreen == 'play':
+        app.playScreen.onMouseRelease(mouseX, mouseY)
+
 def onMouseMove(app, mouseX, mouseY):
     if app.activeScreen == 'splash':
         app.splashScreen.onHover(mouseX, mouseY)
@@ -260,7 +306,7 @@ def drawMenuBar(app):
     buttonWidth = app.buttonWidth
 
     # Actual Menu Bar Display
-    drawRect(0, app.height - app.menuBarHeight, app.width, app.menuBarHeight, fill='white', border='black')
+    drawRect(0, app.height - app.menuBarHeight, app.width, app.menuBarHeight, fill=app.theme.bgColor, border=app.theme.buttonBorderColor)
     
     distanceBetweenLivesDisplays = app.menuBarButtonBuffer / 2
 
