@@ -1,6 +1,8 @@
 from cmu_graphics import *
 import random
 import os
+from themes import lightTheme, darkTheme, redTheme, blueTheme, greenTheme
+from screens import SplashScreen, HelpScreen, PlayScreen
 
 def loadBoards():
     difficulties = ['easy', 'medium', 'hard', 'expert', 'evil']
@@ -21,57 +23,6 @@ def loadBoards():
     
     return boards, solutions
 
-class Theme:
-    def __init__(self, bgColor, buttonColor, buttonBorderColor, textColor, hoverBorderColor, clickColor, gridColor, cellColor, activeColor, correctGuessColor, wrongGuessColor):
-        self.bgColor = bgColor
-        self.buttonColor = buttonColor
-        self.buttonBorderColor = buttonBorderColor
-        self.textColor = textColor
-        self.hoverBorderColor = hoverBorderColor
-        self.clickColor = clickColor
-        self.gridColor = gridColor
-        self.cellColor = cellColor
-        self.activeColor = activeColor
-        self.correctGuessColor = correctGuessColor
-        self.wrongGuessColor = wrongGuessColor
-
-# Define the themes
-lightTheme = Theme(bgColor='white', buttonColor='lightgray', buttonBorderColor='black', textColor='black', hoverBorderColor='cyan', clickColor='darkgray', gridColor='black', cellColor='white', activeColor='lightSkyBlue', correctGuessColor='lightGreen', wrongGuessColor='tomato')
-darkTheme = Theme(bgColor='black', buttonColor='darkgray', buttonBorderColor='white', textColor='white', hoverBorderColor='lightcyan', clickColor='gray', gridColor='white', cellColor='black', activeColor='lightgrey', correctGuessColor='darkgreen', wrongGuessColor='red')
-redTheme = Theme(bgColor='darkred', buttonColor='red', buttonBorderColor='black', textColor='white', hoverBorderColor='lightcoral', clickColor='maroon', gridColor='black', cellColor='red', activeColor='pink', correctGuessColor='darkgreen', wrongGuessColor='orange')
-blueTheme = Theme(bgColor='darkblue', buttonColor='blue', buttonBorderColor='black', textColor='white', hoverBorderColor='lightblue', clickColor='navy', gridColor='black', cellColor='blue', activeColor='skyblue', correctGuessColor='darkgreen', wrongGuessColor='orange')
-greenTheme = Theme(bgColor='darkgreen', buttonColor='green', buttonBorderColor='black', textColor='white', hoverBorderColor='lightgreen', clickColor='forestgreen', gridColor='black', cellColor='green', activeColor='lightgreen', correctGuessColor='darkgreen', wrongGuessColor='orange')
-
-class Button:
-    def __init__(self, x, y, width, height, text, theme, textSize=20):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.text = text
-        self.textSize = textSize
-        self.theme = theme
-        self.isHovered = False
-        self.isClicked = False
-
-    def draw(self):
-        borderColor = self.theme.hoverBorderColor if self.isHovered else self.theme.buttonBorderColor
-        fillColor = self.theme.clickColor if self.isClicked else self.theme.buttonColor
-        drawRect(self.x, self.y, self.width, self.height, fill=fillColor, border=borderColor)
-        drawLabel(self.text, self.x + self.width / 2, self.y + self.height / 2, size=self.textSize, fill=self.theme.textColor, bold=True, align='center')
-
-    def checkClicked(self, mouseX, mouseY):
-        return self.x <= mouseX <= self.x + self.width and self.y <= mouseY <= self.y + self.height
-
-    def onHover(self, mouseX, mouseY):
-        self.isHovered = self.checkClicked(mouseX, mouseY)
-
-    def onClick(self):
-        self.isClicked = True
-
-    def onRelease(self):
-        self.isClicked = False
-
 def onAppStart(app):
     app.width = 600
     app.height = 600
@@ -84,157 +35,11 @@ def onAppStart(app):
     app.theme = app.themes[app.themeIndex]
     app.splashScreen = SplashScreen(app)
     app.playScreen = PlayScreen(app)
+    app.helpScreen = HelpScreen(app)
     app.boards, app.solutions = loadBoards()
     app.splashScreen.setup()
     app.playScreen.setup()
-
-class SplashScreen:
-    def __init__(self, app):
-        self.app = app
-
-    def setup(self):
-        self.colors = [rgb(255, 99, 71), rgb(255, 69, 0), rgb(255, 140, 0), rgb(255, 165, 0), rgb(255, 215, 0)]
-        self.messages = ['easy', 'medium', 'hard', 'expert', 'evil']
-        self.buttonWidth = 150
-        self.buttonHeight = 50
-        self.buttonSpacing = 25
-        self.title = 'SUDOKU'
-        self.titleSize = 55
-        self.buttons = [
-            Button(
-                self.app.width / 2 - self.buttonWidth / 2, 
-                180 + i * (self.buttonHeight + self.buttonSpacing), 
-                self.buttonWidth, 
-                self.buttonHeight, 
-                self.messages[i], 
-                self.app.theme
-            ) for i in range(5)
-        ]
-        self.changeThemeButton = Button(self.app.width - self.buttonWidth - 20, self.app.height - self.buttonHeight - 20, self.buttonWidth, self.buttonHeight, 'Change Theme', self.app.theme)
-
-    def onMousePress(self, mouseX, mouseY):
-        for i, button in enumerate(self.buttons):
-            if button.checkClicked(mouseX, mouseY):
-                button.onClick()
-                self.app.playScreen.setDifficulty(self.messages[i])
-                self.app.activeScreen = 'play'
-                return
-        if self.changeThemeButton.checkClicked(mouseX, mouseY):
-            self.changeThemeButton.onClick()
-            self.app.themeIndex = (self.app.themeIndex + 1) % len(self.app.themes)
-            self.app.theme = self.app.themes[self.app.themeIndex]
-            self.setup()
-            self.app.playScreen.setup()
-
-    def onMouseRelease(self, mouseX, mouseY):
-        for button in self.buttons:
-            button.onRelease()
-        self.changeThemeButton.onRelease()
-
-    def onHover(self, mouseX, mouseY):
-        for button in self.buttons:
-            button.onHover(mouseX, mouseY)
-        self.changeThemeButton.onHover(mouseX, mouseY)
-
-    def draw(self):
-        drawRect(0, 0, self.app.width, self.app.height, fill=self.app.theme.bgColor)
-        self.drawTitle()
-        self.drawButtons()
-        self.changeThemeButton.draw()
-
-    def drawTitle(self):
-        titleX = self.app.width / 2
-        titleY = 100
-        drawLabel(self.title, titleX, titleY, size=self.titleSize, fill=self.colors[0], bold=True, align='center', border='black', borderWidth=1)
-
-    def drawButtons(self):
-        for button in self.buttons:
-            button.draw()
-
-class PlayScreen:
-    def __init__(self, app):
-        self.app = app
-        self.difficulty = 'easy'
-
-    def setDifficulty(self, difficulty):
-        self.difficulty = difficulty
-        self.setup()
-
-    def setup(self):
-        self.pickNewBoard()
-
-        self.app.gridSize = 9
-        self.app.gridPaddingX = 0
-        self.app.gridPaddingY = 0
-        self.app.cellBorderThickness = 2
-        self.app.grid = [[None if cell == 0 else cell for cell in row] for row in self.app.selectedBoard]
-        self.app.gridColors = [[self.app.theme.cellColor for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
-        self.app.activeRow, self.app.activeCol = 0, 0
-        self.app.isGuessMode = False
-        self.app.activeColor = self.app.theme.activeColor
-        self.app.cellStatus = [['normal' for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)] # 'normal', 'correct', 'incorrect'
-        self.app.gridColors[self.app.activeRow][self.app.activeCol] = self.app.activeColor
-        self.app.cellGuesses = [[[None for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)] for _ in range(self.app.gridSize)]
-        self.app.fontSize = 22
-        self.app.totalLives = 3
-        self.app.remainingLives = self.app.totalLives
-        self.app.isIncorrect = False
-        self.app.isGameOver = False
-        updateGridDimensions(self.app)
-        self.setupButtons()
-
-    def pickNewBoard(self):
-        availableBoards = len(self.app.boards[self.difficulty])
-        newBoardIndex = random.randint(0, availableBoards - 1)
-        if hasattr(self.app, 'selectedBoardIndex'):
-            while newBoardIndex == self.app.selectedBoardIndex:
-                newBoardIndex = random.randint(0, availableBoards - 1)
-        self.app.selectedBoardIndex = newBoardIndex
-        self.app.selectedBoard = self.app.boards[self.difficulty][self.app.selectedBoardIndex]
-        self.app.solutionBoard = self.app.solutions[self.difficulty][self.app.selectedBoardIndex]
-
-    def setupButtons(self):
-        buttonHeight = self.app.menuBarHeight - 2 * self.app.menuBarButtonBuffer
-        buttonY = self.app.height - self.app.menuBarHeight + self.app.menuBarButtonBuffer
-        buttonWidth = self.app.buttonWidth
-
-        self.resetButton = Button(self.app.width / 2 - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, 'Reset', self.app.theme)
-        self.homeButton = Button(self.app.width - buttonWidth - self.app.menuBarButtonBuffer, buttonY, buttonWidth, buttonHeight, 'Home', self.app.theme)
-        self.buttons = [self.resetButton, self.homeButton]
-
-    def onMousePress(self, mouseX, mouseY):
-        for button in self.buttons:
-            if button.checkClicked(mouseX, mouseY):
-                button.onClick()
-                if button.text == 'Reset':
-                    self.pickNewBoard()
-                    self.setup()
-                elif button.text == 'Home':
-                    self.app.activeScreen = 'splash'
-                return
-        if not self.app.isGameOver:
-            self.app.activeRow, self.app.activeCol = getGridCell(self.app, mouseX, mouseY)
-            if self.app.isIncorrect:
-                self.app.isIncorrect = False
-
-    def onMouseRelease(self, mouseX, mouseY):
-        for button in self.buttons:
-            button.onRelease()
-
-    def onHover(self, mouseX, mouseY):
-        for button in self.buttons:
-            button.onHover(mouseX, mouseY)
-
-    def draw(self):
-        drawRect(0, 0, self.app.width, self.app.height, fill=self.app.theme.bgColor)
-        drawGrid(self.app)
-        drawGridBorder(self.app)
-        drawMenuBar(self.app)
-        self.drawButtons()
-
-    def drawButtons(self):
-        for button in self.buttons:
-            button.draw()
+    app.helpScreen.setup()
 
 def updateGridDimensions(app):
     app.gridWidth = app.width
@@ -301,6 +106,8 @@ def redrawAll(app):
         app.splashScreen.draw()
     elif app.activeScreen == 'play':
         app.playScreen.draw()
+    elif app.activeScreen == 'help':
+        app.helpScreen.draw()
 
 def onStep(app):
     updateGridDimensions(app)
@@ -319,22 +126,28 @@ def onMousePress(app, mouseX, mouseY):
         app.splashScreen.onMousePress(mouseX, mouseY)
     elif app.activeScreen == 'play':
         app.playScreen.onMousePress(mouseX, mouseY)
+    elif app.activeScreen == 'help':
+        app.helpScreen.onMousePress(mouseX, mouseY)
 
 def onMouseRelease(app, mouseX, mouseY):
     if app.activeScreen == 'splash':
         app.splashScreen.onMouseRelease(mouseX, mouseY)
     elif app.activeScreen == 'play':
         app.playScreen.onMouseRelease(mouseX, mouseY)
+    elif app.activeScreen == 'help':
+        app.helpScreen.onMouseRelease(mouseX, mouseY)
 
 def onMouseMove(app, mouseX, mouseY):
     if app.activeScreen == 'splash':
         app.splashScreen.onHover(mouseX, mouseY)
     elif app.activeScreen == 'play':
         app.playScreen.onHover(mouseX, mouseY)
+    elif app.activeScreen == 'help':
+        app.helpScreen.onHover(mouseX, mouseY)
 
 def drawMenuBar(app):
     buttonHeight = app.menuBarHeight - 2 * app.menuBarButtonBuffer
-    buttonY = app.height - app.menuBarHeight + app.menuBarButtonBuffer
+    buttonY = app.height - app.menuBarButtonBuffer - buttonHeight
     buttonWidth = app.buttonWidth
 
     drawRect(0, app.height - app.menuBarHeight, app.width, app.menuBarHeight, fill=app.theme.bgColor, border=app.theme.buttonBorderColor)
@@ -390,4 +203,7 @@ def calculateCellSize(app):
     cellHeight = app.gridHeight / app.gridSize
     return cellWidth, cellHeight
 
-runApp(width=600, height=600)
+def main():
+    runApp(width=600, height=600)
+
+main()
