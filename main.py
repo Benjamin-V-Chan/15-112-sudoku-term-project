@@ -35,6 +35,7 @@ class Theme:
         self.correctGuessColor = correctGuessColor
         self.wrongGuessColor = wrongGuessColor
 
+# Define the themes
 lightTheme = Theme(bgColor='white', buttonColor='lightgray', buttonBorderColor='black', textColor='black', hoverBorderColor='cyan', clickColor='darkgray', gridColor='black', cellColor='white', activeColor='lightSkyBlue', correctGuessColor='lightGreen', wrongGuessColor='tomato')
 darkTheme = Theme(bgColor='black', buttonColor='darkgray', buttonBorderColor='white', textColor='white', hoverBorderColor='lightcyan', clickColor='gray', gridColor='white', cellColor='black', activeColor='lightgrey', correctGuessColor='darkgreen', wrongGuessColor='red')
 redTheme = Theme(bgColor='darkred', buttonColor='red', buttonBorderColor='black', textColor='white', hoverBorderColor='lightcoral', clickColor='maroon', gridColor='black', cellColor='red', activeColor='pink', correctGuessColor='darkgreen', wrongGuessColor='orange')
@@ -78,7 +79,9 @@ def onAppStart(app):
     app.menuBarButtonBuffer = 10
     app.buttonWidth = 100
     app.activeScreen = 'splash'
-    app.theme = redTheme
+    app.themes = [lightTheme, darkTheme, redTheme, blueTheme, greenTheme]
+    app.themeIndex = 0
+    app.theme = app.themes[app.themeIndex]
     app.splashScreen = SplashScreen(app)
     app.playScreen = PlayScreen(app)
     app.boards, app.solutions = loadBoards()
@@ -107,6 +110,7 @@ class SplashScreen:
                 self.app.theme
             ) for i in range(5)
         ]
+        self.changeThemeButton = Button(self.app.width - self.buttonWidth - 20, self.app.height - self.buttonHeight - 20, self.buttonWidth, self.buttonHeight, 'Change Theme', self.app.theme)
 
     def onMousePress(self, mouseX, mouseY):
         for i, button in enumerate(self.buttons):
@@ -115,19 +119,28 @@ class SplashScreen:
                 self.app.playScreen.setDifficulty(self.messages[i])
                 self.app.activeScreen = 'play'
                 return
+        if self.changeThemeButton.checkClicked(mouseX, mouseY):
+            self.changeThemeButton.onClick()
+            self.app.themeIndex = (self.app.themeIndex + 1) % len(self.app.themes)
+            self.app.theme = self.app.themes[self.app.themeIndex]
+            self.setup()
+            self.app.playScreen.setup()
 
     def onMouseRelease(self, mouseX, mouseY):
         for button in self.buttons:
             button.onRelease()
+        self.changeThemeButton.onRelease()
 
     def onHover(self, mouseX, mouseY):
         for button in self.buttons:
             button.onHover(mouseX, mouseY)
+        self.changeThemeButton.onHover(mouseX, mouseY)
 
     def draw(self):
         drawRect(0, 0, self.app.width, self.app.height, fill=self.app.theme.bgColor)
         self.drawTitle()
         self.drawButtons()
+        self.changeThemeButton.draw()
 
     def drawTitle(self):
         titleX = self.app.width / 2
