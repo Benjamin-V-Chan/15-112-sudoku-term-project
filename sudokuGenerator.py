@@ -1,5 +1,4 @@
 import random
-import copy
 
 numbers = list(range(1, 10))
 startingNumbers = {
@@ -13,7 +12,6 @@ startingNumbers = {
 def generateBoard(difficulty):
     while True:
         board = generateCompleteBoard()
-        boardCopy = copy.deepcopy(board)
         removeNumbers(board, startingNumbers[difficulty])
         if isBoardSolvable(board):
             return board, startingNumbers[difficulty]
@@ -44,38 +42,33 @@ def findEmptyCell(board):
                 return row, col
     return None
 
-def isValid(board, row, col, num):
-    board = noneToZero(board)
-    for i in range(9):
-        if (board[row][i] == num and i != col) or (board[i][col] == num and i != row):
+def isValid(grid, row, col, num):
+    for c in range(9):
+        if grid[row][c] == num:
             return False
-    boxRow, boxCol = row // 3 * 3, col // 3 * 3
-    for i in range(boxRow, boxRow + 3):
-        for j in range(boxCol, boxCol + 3):
-            if board[i][j] == num and (i, j) != (row, col):
+
+    for r in range(9):
+        if grid[r][col] == num:
+            return False
+
+    blockRow, blockCol = 3 * (row // 3), 3 * (col // 3)
+    for r in range(blockRow, blockRow + 3):
+        for c in range(blockCol, blockCol + 3):
+            if grid[r][c] == num:
                 return False
+
     return True
 
-def noneToZero(board):
-    boardCopy = copy.deepcopy(board)
-    for row in range(9):
-        for col in range(9):
-            if boardCopy[row][col] is None:
-                boardCopy[row][col] = 0
-    return boardCopy
 
 def removeNumbers(board, count):
     attempts = 81 - count
     while attempts > 0:
-        row = random.randint(0, 8)
-        col = random.randint(0, 8)
+        row, col = random.randint(0, 8), random.randint(0, 8)
         while board[row][col] == 0:
-            row = random.randint(0, 8)
-            col = random.randint(0, 8)
+            row, col = random.randint(0, 8), random.randint(0, 8)
         backup = board[row][col]
         board[row][col] = 0
-        boardCopy = copy.deepcopy(board)
-        if not solveBoard(boardCopy):
+        if not isBoardSolvable(board):
             board[row][col] = backup
         else:
             attempts -= 1
@@ -94,5 +87,5 @@ def solveBoard(board):
     return False
 
 def isBoardSolvable(board):
-    boardCopy = copy.deepcopy(board)
+    boardCopy = [row[:] for row in board]
     return solveBoard(boardCopy)
