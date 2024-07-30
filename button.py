@@ -1,4 +1,4 @@
-from cmu_graphics import drawRect, drawLabel
+from cmu_graphics import *
 
 class Button:
     def __init__(self, x, y, width, height, text, theme, textSize=20):
