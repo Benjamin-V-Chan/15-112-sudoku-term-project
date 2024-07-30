@@ -29,7 +29,7 @@ def generateAndSetupGrid(app):
     app.grid, _ = generateBoard(app.difficulty)
     app.grid = [[None if cell == 0 else cell for cell in row] for row in app.grid]
     app.gridColors = [[app.theme.cellColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.cellStatus = [['normal' for _ in range(app.gridSize)] for _ in range(app.gridSize)]  # 'normal', 'correct', 'incorrect', 'starting', 'guess'
+    app.cellStatus = [['normal' for _ in range(app.gridSize)] for _ in range(app.gridSize)]  # 'normal', 'correct', 'incorrect', 'starting', 'single'
     for row in range(app.gridSize):
         for col in range(app.gridSize):
             if app.grid[row][col] is not None:
@@ -44,9 +44,11 @@ def setupPlayButtons(app):
     buttonHeight = app.menuBarHeight - 2 * app.menuBarButtonBuffer
     buttonY = app.height - app.menuBarButtonBuffer - buttonHeight
     buttonWidth = app.buttonWidth
-    app.resetButton = Button(app.width / 2 - buttonWidth / 2, buttonY, buttonWidth, buttonHeight, 'Reset', app.theme)
-    app.homeButton = Button(app.width - buttonWidth - app.menuBarButtonBuffer, buttonY, buttonWidth, buttonHeight, 'Home', app.theme)
-    app.playButtons = [app.resetButton, app.homeButton]
+    app.resetButton = Button(125, buttonY, buttonWidth, buttonHeight, 'Reset', app.theme)
+    app.homeButton = Button(app.resetButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Home', app.theme)
+    app.hintButtonOne = Button(app.homeButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint One', app.theme)
+    app.hintButtonTwo = Button(app.hintButtonOne.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Two', app.theme)
+    app.playButtons = [app.resetButton, app.homeButton, app.hintButtonOne, app.hintButtonTwo]
 
 def play_onMousePress(app, mouseX, mouseY):
     for button in app.playButtons:
@@ -57,10 +59,61 @@ def play_onMousePress(app, mouseX, mouseY):
                 generateAndSetupGrid(app)
             elif button.text == 'Home':
                 setActiveScreen('splash')
+            elif button.text == 'Hint One':
+                autoFillOneSingleUpdateStatus(app)
+            elif button.text == 'Hint Two':
+                autoFillAllSingleUpdateStatus(app)
             return
     if not app.isGameOver:
         app.highlightedRow, app.highlightedCol = getGridCell(app, mouseX, mouseY)
-        updateCellColors(app)
+
+def autoFillOneSingleUpdateValue(app):
+    for row in range(app.gridSize):
+        for col in range(app.gridSize):
+            if app.cellStatus[row][col] == 'single':
+                only = findOnly(app.autoCellGuesses[row][col])
+                if only is not None and app.cellStatus[row][col] != 'correct' or app.cellStatus[row][col] != 'starting':
+                    app.cellStatus[row][col] = 'correct'
+                    app.grid[row][col] = only
+                    print(f"only: {only}")
+
+def autoFillOneSingleUpdateStatus(app):
+    for row in range(app.gridSize):
+        for col in range(app.gridSize):
+            if app.cellStatus[row][col] not in ['correct', 'starting']:
+                only = findOnly(app.autoCellGuesses[row][col])
+                if only is not None:
+                    app.cellStatus[row][col] = 'single'
+                    return
+
+def autoFillAllSingleUpdateStatus(app):
+    for row in range(app.gridSize):
+        for col in range(app.gridSize):
+            if app.cellStatus[row][col] not in ['correct', 'starting']:
+                only = findOnly(app.autoCellGuesses[row][col])
+                if only is not None:
+                    app.cellStatus[row][col] = 'single'
+
+def autoFillAllSingleUpdateValue(app):
+    for row in range(app.gridSize):
+        for col in range(app.gridSize):
+            if app.cellStatus[row][col] == 'single':
+                only = findOnly(app.autoCellGuesses[row][col])
+                if only is not None:
+                    app.cellStatus[row][col] = 'correct'
+                    app.grid[row][col] = only
+                    print(f"only: {only}")
+
+def findOnly(L):
+    only = None
+    counts = 0
+    for val in L:
+        if val is not None:
+            only = val
+            counts += 1
+        if counts > 1:
+            return None
+    return only
 
 def play_onMouseRelease(app, mouseX, mouseY):
     for button in app.playButtons:
@@ -99,7 +152,16 @@ def play_onKeyPress(app, key):
         elif key == 'a':
             app.isManualGuessMode = not app.isManualGuessMode
             app.isGuessMode = False
-    updateCellColors(app)
+        elif key == 'q':
+            autoFillOneSingleUpdateValue(app)
+        elif key == 'w':
+            autoFillAllSingleUpdateValue(app)
+        elif key == 'd':
+            print()
+            print('#########')
+            print()
+            for row in app.cellStatus:
+                print(row)
 
 def updateGridDimensions(app):
     app.gridWidth = app.width
@@ -139,15 +201,16 @@ def drawGridCell(app, row, col):
             num = app.cellGuesses[row][col][i]
             xPos = cellWidth / 3 * (i % 3 + 1) - (cellWidth // 3) * 0.5
             yPos = cellHeight / 3 * (i // 3 + 1) - (cellHeight // 3) * 0.5
-            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 2, fill='grey')
+            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 1.5, fill='grey')
         elif app.autoCellGuesses[row][col][i] is not None and app.isManualGuessMode:
             num = app.autoCellGuesses[row][col][i]
             xPos = cellWidth / 3 * (i % 3 + 1) - (cellWidth // 3) * 0.5
             yPos = cellHeight / 3 * (i // 3 + 1) - (cellHeight // 3) * 0.5
-            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 2, fill='grey')
+            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 1.5, fill='grey')
 
 def play_onStep(app):
     updateAutoCellGuesses(app)
+    updateCellColors(app)
 
 def updateAutoCellGuesses(app):
     for row in range(app.gridSize):
@@ -190,7 +253,6 @@ def navigateGrid(app, direction):
         app.highlightedCol -= 1
     elif direction == 'right' and app.highlightedCol < app.gridSize - 1:
         app.highlightedCol += 1
-    updateCellColors(app)
 
 def removeIncorrectGuesses(app):
     to_remove = []
@@ -214,6 +276,8 @@ def updateCellColors(app):
                 app.gridColors[row][col] = app.theme.cellColor
             elif app.cellStatus[row][col] == 'normal':
                 app.gridColors[row][col] = app.theme.cellColor
+            elif app.cellStatus[row][col] == 'single':
+                app.gridColors[row][col] = app.theme.singleGuessColor
     app.gridColors[app.highlightedRow][app.highlightedCol] = app.theme.highlightedColor
 
 def drawEndGameScreen(app):

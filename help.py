@@ -64,8 +64,8 @@ def drawPageContent(app, pageIndex):
         drawLabel('the number keys to fill in the cells.', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
     elif pageIndex == 3:
         drawLabel('Guess Mode', app.width / 2, topBoxHeight / 2, size=24, fill=app.theme.textColor, align='center')
-        drawLabel('Press "G" to toggle guess mode. In guess mode,', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')
-        drawLabel('your guesses will be highlighted differently.', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
+        drawLabel('Press "G" to toggle manual guess mode.', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')
+        drawLabel('Press "A" to toggle automatic guess mode.', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
     elif pageIndex == 4:
         drawLabel('Hints and Tips', app.width / 2, topBoxHeight / 2, size=24, fill=app.theme.textColor, align='center')
         drawLabel('If you are stuck, try to find the numbers that can', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')
