@@ -20,8 +20,10 @@ def resetPlayScreen(app):
     app.totalLives = 3
     app.remainingLives = app.totalLives
     app.isGameOver = False
+    app.isManualGuessMode = False
     app.isGuessMode = False
     app.tempIncorrect = {}
+    app.wonGame = False
 
 def generateAndSetupGrid(app):
     app.grid, _ = generateBoard(app.difficulty)
@@ -34,6 +36,7 @@ def generateAndSetupGrid(app):
                 app.cellStatus[row][col] = 'starting'
     app.gridColors[app.highlightedRow][app.highlightedCol] = app.theme.highlightedColor
     app.cellGuesses = [[[None for _ in range(app.gridSize)] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
+    app.autoCellGuesses = [[[None for _ in range(app.gridSize)] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
     updateGridDimensions(app)
     setupPlayButtons(app)
 
@@ -77,12 +80,14 @@ def play_onKeyPress(app, key):
             if isValid(app.grid, app.highlightedRow, app.highlightedCol, int(key)):
                 app.cellStatus[app.highlightedRow][app.highlightedCol] = 'correct'
                 if all(cell is not None for row in app.grid for cell in row):
+                    app.wonGame = True
                     app.isGameOver = True
             else:
                 app.remainingLives -= 1
                 app.cellStatus[app.highlightedRow][app.highlightedCol] = 'incorrect'
                 app.grid[app.highlightedRow][app.highlightedCol] = None
                 if app.remainingLives <= 0:
+                    app.wonGame = False
                     app.isGameOver = True
                 app.tempIncorrect[(app.highlightedRow, app.highlightedCol)] = int(key)
             app.cellGuesses[app.highlightedRow][app.highlightedCol] = [None for _ in range(app.gridSize)]
@@ -90,6 +95,10 @@ def play_onKeyPress(app, key):
             app.cellGuesses[app.highlightedRow][app.highlightedCol][int(key) - 1] = int(key)
         elif key == 'g':
             app.isGuessMode = not app.isGuessMode
+            app.isManualGuessMode = False
+        elif key == 'a':
+            app.isManualGuessMode = not app.isManualGuessMode
+            app.isGuessMode = False
     updateCellColors(app)
 
 def updateGridDimensions(app):
@@ -126,11 +135,28 @@ def drawGridCell(app, row, col):
     elif (row, col) in app.tempIncorrect:
         drawLabel(app.tempIncorrect[(row, col)], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill=app.theme.wrongGuessColor)
     for i in range(9):
-        if app.cellGuesses[row][col][i] is not None:
+        if app.cellGuesses[row][col][i] is not None and app.isGuessMode:
             num = app.cellGuesses[row][col][i]
             xPos = cellWidth / 3 * (i % 3 + 1) - (cellWidth // 3) * 0.5
             yPos = cellHeight / 3 * (i // 3 + 1) - (cellHeight // 3) * 0.5
-            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 2.5, fill='grey')
+            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 2, fill='grey')
+        elif app.autoCellGuesses[row][col][i] is not None and app.isManualGuessMode:
+            num = app.autoCellGuesses[row][col][i]
+            xPos = cellWidth / 3 * (i % 3 + 1) - (cellWidth // 3) * 0.5
+            yPos = cellHeight / 3 * (i // 3 + 1) - (cellHeight // 3) * 0.5
+            drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 2, fill='grey')
+
+def play_onStep(app):
+    updateAutoCellGuesses(app)
+
+def updateAutoCellGuesses(app):
+    for row in range(app.gridSize):
+        for col in range(app.gridSize):
+            if app.grid[row][col] is None:
+                app.autoCellGuesses[row][col] = [None for _ in range(app.gridSize)]
+                for i in range(1, app.gridSize + 1):
+                    if isValid(app.grid, row, col, i):
+                        app.autoCellGuesses[row][col][i - 1] = i
 
 def getGridCellLeftTop(app, row, col):
     cellWidth, cellHeight = calculateCellSize(app)
@@ -193,7 +219,10 @@ def updateCellColors(app):
 def drawEndGameScreen(app):
     if app.isGameOver:
         drawRect(0, 0, app.width, app.height, fill='black')
-        drawLabel('Game Over!', app.width / 2, app.height / 2, size=40, fill='white')
+        if app.wonGame:
+            drawLabel('Level Complete!', app.width / 2, app.height / 2, size=40, fill='white')
+        else:
+            drawLabel('Game Over!', app.width / 2, app.height / 2, size=40, fill='white')
         drawLabel('Press "Reset" to play again', app.width / 2, app.height / 2 + 50, size=20, fill='white')
         drawLabel('Press "Home" to go back to the main menu', app.width / 2, app.height / 2 + 80, size=20, fill='white')
 
