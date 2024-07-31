@@ -1,15 +1,15 @@
 from cmu_graphics import *
 from themes import *
 from splash import *
+from settings import resetSettings
 
 def onAppStart(app):
     app.menuBarHeight = 50
     app.menuBarButtonBuffer = 10
     app.buttonWidth = 10
     app.themes = [lightTheme, redTheme, blueTheme, greenTheme, yellowTheme, purpleTheme, orangeTheme, pinkTheme, brownTheme, blackTheme]
-    app.themeIndex = 0
-    app.theme = app.themes[app.themeIndex]
 
+    resetSettings(app)
     setActiveScreen('splash')
     setupSplashScreen(app)
 

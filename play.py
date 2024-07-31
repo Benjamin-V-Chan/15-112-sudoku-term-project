@@ -9,11 +9,8 @@ def setupPlayScreen(app):
     app.gridPaddingY = 0
     app.cellBorderThickness = 2
     app.fontSize = 22
+    app.playScreenButtonWidth = 125
     app.highlightedRow, app.highlightedCol = 0, 0
-    app.totalLives = 3
-    app.remainingLives = app.totalLives
-    app.isGameOver = False
-    app.tempIncorrect = {}
     resetPlayScreen(app)
     generateAndSetupGrid(app)
 
@@ -27,7 +24,8 @@ def resetPlayScreen(app):
     app.wonGame = False
 
 def generateAndSetupGrid(app):
-    app.grid, _ = generateBoard(app.difficulty)
+    print(app.difficulty)
+    app.grid = generateBoard(app.difficulty)
     app.grid = [[None if cell == 0 else cell for cell in row] for row in app.grid]
     app.gridColors = [[app.theme.cellColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
     app.cellStatus = [['normal' for _ in range(app.gridSize)] for _ in range(app.gridSize)]  # 'normal', 'correct', 'incorrect', 'starting', 'single', 'tuple'
@@ -57,7 +55,6 @@ def autoFillOneSingleUpdateValue(app):
                 if only is not None and app.cellStatus[row][col] != 'correct' or app.cellStatus[row][col] != 'starting':
                     app.cellStatus[row][col] = 'correct'
                     app.grid[row][col] = only
-                    print(f"only: {only}")
 
 def findOnly(L):
     only = None
@@ -81,7 +78,7 @@ def play_onMouseMove(app, mouseX, mouseY):
 def setupPlayButtons(app):
     buttonHeight = app.menuBarHeight - 2 * app.menuBarButtonBuffer
     buttonY = app.height - app.menuBarButtonBuffer - buttonHeight
-    buttonWidth = app.buttonWidth
+    buttonWidth = app.playScreenButtonWidth
     app.resetButton = Button(125, buttonY, buttonWidth, buttonHeight, 'Reset', app.theme)
     app.homeButton = Button(app.resetButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Home', app.theme)
     app.hintShowButton = Button(app.homeButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Show', app.theme)
@@ -135,10 +132,6 @@ def play_onKeyPress(app, key):
         elif key == 'a':
             app.isManualGuessMode = not app.isManualGuessMode
             app.isGuessMode = False
-        elif key == 'q':
-            setHintStatus(app)
-        elif key == 'w':
-            fillHintedCells(app)
         elif key == 'd':
             print()
             print('#########')

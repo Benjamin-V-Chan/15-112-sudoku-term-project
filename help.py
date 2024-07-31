@@ -60,12 +60,12 @@ def drawPageContent(app, pageIndex):
         drawLabel('to start a new game.', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
     elif pageIndex == 2:
         drawLabel('Gameplay Instructions', app.width / 2, topBoxHeight / 2, size=24, fill=app.theme.textColor, align='center')
-        drawLabel('Use the arrow keys to navigate the grid and', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')
+        drawLabel('Use the arrow keys or mouse to navigate the grid and', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')
         drawLabel('the number keys to fill in the cells.', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
     elif pageIndex == 3:
         drawLabel('Guess Mode', app.width / 2, topBoxHeight / 2, size=24, fill=app.theme.textColor, align='center')
         drawLabel('Press "G" to toggle manual guess mode.', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')
-        drawLabel('Press "A" to toggle automatic guess mode.', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
+        drawLabel('Use this to map out potential values for that cell', app.width / 2, line2Y, size=18, fill=app.theme.textColor, align='center')
     elif pageIndex == 4:
         drawLabel('Hints and Tips', app.width / 2, topBoxHeight / 2, size=24, fill=app.theme.textColor, align='center')
         drawLabel('If you are stuck, try to find the numbers that can', app.width / 2, line1Y, size=18, fill=app.theme.textColor, align='center')

@@ -14,7 +14,7 @@ def generateBoard(difficulty):
         board = generateCompleteBoard()
         removeNumbers(board, startingNumbers[difficulty])
         if isBoardSolvable(board):
-            return board, startingNumbers[difficulty]
+            return board
 
 def generateCompleteBoard():
     board = [[0 for _ in range(9)] for _ in range(9)]
@@ -22,12 +22,12 @@ def generateCompleteBoard():
     return board
 
 def fillBoard(board):
-    empty = findEmptyCell(board)
+    empty = findEmptyCellWithFewestOptions(board)
     if not empty:
         return True
-    row, col = empty
-    random.shuffle(numbers)
-    for num in numbers:
+    row, col, options = empty
+    random.shuffle(options)  # Shuffle options to ensure randomness
+    for num in options:
         if isValid(board, row, col, num):
             board[row][col] = num
             if fillBoard(board):
@@ -35,12 +35,19 @@ def fillBoard(board):
             board[row][col] = 0
     return False
 
-def findEmptyCell(board):
+def findEmptyCellWithFewestOptions(board):
+    min_options = 10
+    best_cell = None
     for row in range(9):
         for col in range(9):
             if board[row][col] == 0:
-                return row, col
-    return None
+                options = [num for num in numbers if isValid(board, row, col, num)]
+                if len(options) < min_options:
+                    min_options = len(options)
+                    best_cell = (row, col, options)
+                    if min_options == 1:
+                        return best_cell
+    return best_cell
 
 def isValid(grid, row, col, num):
     for c in range(9):
@@ -59,7 +66,6 @@ def isValid(grid, row, col, num):
 
     return True
 
-
 def removeNumbers(board, count):
     attempts = 81 - count
     while attempts > 0:
@@ -74,11 +80,12 @@ def removeNumbers(board, count):
             attempts -= 1
 
 def solveBoard(board):
-    empty = findEmptyCell(board)
+    empty = findEmptyCellWithFewestOptions(board)
     if not empty:
         return True
-    row, col = empty
-    for num in range(1, 10):
+    row, col, options = empty
+    random.shuffle(options)  # Shuffle options to ensure randomness
+    for num in options:
         if isValid(board, row, col, num):
             board[row][col] = num
             if solveBoard(board):

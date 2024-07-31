@@ -11,10 +11,14 @@ class Button:
         self.theme = theme
         self.isHovered = False
         self.isClicked = False
+        self.isSelected = False
 
     def draw(self):
         borderColor = self.theme.hoverBorderColor if self.isHovered else self.theme.buttonBorderColor
-        fillColor = self.theme.clickColor if self.isClicked else self.theme.buttonColor
+        if self.isSelected or self.isClicked:
+            fillColor = self.theme.clickColor
+        else:
+            fillColor = self.theme.buttonColor
         drawRect(self.x, self.y, self.width, self.height, fill=fillColor, border=borderColor)
         drawLabel(self.text, self.x + self.width / 2, self.y + self.height / 2, size=self.textSize, fill=self.theme.textColor, bold=True, align='center')
 
