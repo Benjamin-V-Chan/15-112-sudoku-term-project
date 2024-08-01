@@ -13,7 +13,7 @@ def setupPlayScreen(app):
     app.highlightedRow, app.highlightedCol = 0, 0
     app.splashMusic.pause()
     if not app.muteVolume:
-        app.playMusic.play(loop=True, volume=0)
+        app.playMusic.play(loop=True, restart=True)
     resetPlayScreen(app)
     generateAndSetupGrid(app)
 
@@ -27,7 +27,6 @@ def resetPlayScreen(app):
     app.wonGame = False
 
 def generateAndSetupGrid(app):
-    print(app.difficulty)
     app.grid = generateBoard(app.difficulty)
     app.grid = [[None if cell == 0 else cell for cell in row] for row in app.grid]
     app.gridColors = [[app.theme.cellColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
@@ -144,6 +143,7 @@ def play_onKeyPress(app, key):
             for row in app.cellStatus:
                 print(row)
 
+# Inspiration from CMU notes about board/grid
 def updateGridDimensions(app):
     app.gridWidth = app.width
     app.gridHeight = app.height - app.menuBarHeight
@@ -151,6 +151,7 @@ def updateGridDimensions(app):
     app.cellWidth = app.gridWidth / app.gridSize
     app.cellHeight = app.gridHeight / app.gridSize
 
+# Inspiration from CMU notes about board/grid
 def getGridCell(app, x, y):
     cellWidth, cellHeight = calculateCellSize(app)
     row, col = int(y // cellHeight), int(x // cellWidth)
@@ -158,17 +159,20 @@ def getGridCell(app, x, y):
     if col >= app.gridSize: col = app.gridSize - 1
     return row, col
 
+# Inspiration from CMU notes about board/grid
 def drawGrid(app):
     for row in range(app.gridSize):
         for col in range(app.gridSize):
             drawGridCell(app, row, col)
 
+# Inspiration from CMU notes about board/grid
 def drawGridBorder(app):
     drawRect(app.gridPaddingX, app.gridPaddingY, app.gridWidth, app.gridHeight, fill=None, border=app.theme.gridColor, borderWidth=2 * app.cellBorderThickness)
     for i in range(1, 3):
         drawLine(app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY, app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY + app.gridHeight, lineWidth=4, fill=app.theme.gridColor)
         drawLine(app.gridPaddingX, app.gridPaddingY + app.gridHeight * i / 3, app.gridPaddingX + app.gridWidth, app.gridPaddingY + app.gridHeight * i / 3, lineWidth=4, fill=app.theme.gridColor)
 
+# Inspiration from CMU notes about board/grid
 def drawGridCell(app, row, col):
     cellLeft, cellTop = getGridCellLeftTop(app, row, col)
     cellWidth, cellHeight = calculateCellSize(app)
@@ -202,12 +206,14 @@ def updateAutoCellGuesses(app):
                     if isValid(app.grid, row, col, i):
                         app.autoCellGuesses[row][col][i - 1] = i
 
+# Inspiration from CMU notes about board/grid
 def getGridCellLeftTop(app, row, col):
     cellWidth, cellHeight = calculateCellSize(app)
     cellLeft = app.gridPaddingX + col * cellWidth
     cellTop = app.gridPaddingY + row * cellHeight
     return cellLeft, cellTop
 
+# Inspiration from CMU notes about board/grid
 def calculateCellSize(app):
     cellWidth = app.gridWidth / app.gridSize
     cellHeight = app.gridHeight / app.gridSize
@@ -282,6 +288,7 @@ def play_redrawAll(app):
     for button in app.playButtons:
         button.draw()
 
+# Inspiration from CMU Mini Sudoku Solver HW
 def findLegalValues(app, row, col):
     if app.grid[row][col] is not None:
         return set()

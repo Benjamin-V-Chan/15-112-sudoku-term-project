@@ -26,7 +26,7 @@ def fillBoard(board):
     if not empty:
         return True
     row, col, options = empty
-    random.shuffle(options)  # Shuffle options to ensure randomness
+    random.shuffle(options)
     for num in options:
         if isValid(board, row, col, num):
             board[row][col] = num
@@ -35,6 +35,7 @@ def fillBoard(board):
             board[row][col] = 0
     return False
 
+# Light Inspiration from CMU Mini Sudoku Solver HW
 def findEmptyCellWithFewestOptions(board):
     min_options = 10
     best_cell = None
@@ -49,6 +50,8 @@ def findEmptyCellWithFewestOptions(board):
                         return best_cell
     return best_cell
 
+# Light Inspiration from CMU Mini Sudoku Solver HW
+# Similar function to findLegalValues in play.py
 def isValid(grid, row, col, num):
     for c in range(9):
         if grid[row][c] == num:
@@ -79,12 +82,13 @@ def removeNumbers(board, count):
         else:
             attempts -= 1
 
+# Inspiration from CMU Mini Sudoku Solver HW
 def solveBoard(board):
     empty = findEmptyCellWithFewestOptions(board)
     if not empty:
         return True
     row, col, options = empty
-    random.shuffle(options)  # Shuffle options to ensure randomness
+    random.shuffle(options)
     for num in options:
         if isValid(board, row, col, num):
             board[row][col] = num

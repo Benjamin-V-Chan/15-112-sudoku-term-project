@@ -16,7 +16,7 @@ def setupKeybindsScreen(app):
     app.keybindsMessageY = app.height - 35
     app.keybindsMessageSize = 25
     app.keyInUseStartTime = 0
-    app.keyInUse = False  # To track if a key is already in use
+    app.keyInUse = False
     setupKeybindsScreenButtons(app)
 
 def setupKeybindsScreenButtons(app):
@@ -40,10 +40,10 @@ def keybinds_onKeyPress(app, key):
             app.keyInUse = True
             app.currentKeyBindCheck = None
             return
-        app.keybinds[app.currentKeyBindCheck] = key  # Update the keybind for the selected action
+        app.keybinds[app.currentKeyBindCheck] = key
         app.currentKeyBindCheck = None
         app.keybindsMessage = app.defaultKeybindsMessage
-        setupKeybindsScreenButtons(app)  # Update buttons to reflect new keybinds
+        setupKeybindsScreenButtons(app)
 
 def keybinds_redrawAll(app):
     drawRect(0, 0, app.width, app.height, fill=app.theme.bgColor)
