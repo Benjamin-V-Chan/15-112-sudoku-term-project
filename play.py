@@ -1,5 +1,6 @@
 from cmu_graphics import *
-from sudokuGenerator import *
+from functions import isValid
+from sudokuGenerator import generateBoard
 from button import Button
 from itertools import combinations
 
@@ -25,57 +26,24 @@ def resetPlayScreen(app):
     app.isGuessMode = False
     app.tempIncorrect = {}
     app.wonGame = False
+    app.highlightedSingles = []  # Initialize list to track singles hints
+    app.highlightedTuples = []  # Initialize list to track tuples hints
 
 def generateAndSetupGrid(app):
     app.grid = generateBoard(app.difficulty)
     app.grid = [[None if cell == 0 else cell for cell in row] for row in app.grid]
     app.gridColors = [[app.theme.cellColor for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.cellStatus = [['normal' for _ in range(app.gridSize)] for _ in range(app.gridSize)]  # 'normal', 'correct', 'incorrect', 'starting', 'single', 'tuple'
+    app.cellStatus = [['normal' for _ in range(app.gridSize)] for _ in range(app.gridSize)]
     for row in range(app.gridSize):
         for col in range(app.gridSize):
             if app.grid[row][col] is not None:
                 app.cellStatus[row][col] = 'starting'
     app.gridColors[app.highlightedRow][app.highlightedCol] = app.theme.highlightedColor
+    # Correctly initialize autoCellGuesses with the right dimensions
     app.cellGuesses = [[[None for _ in range(app.gridSize)] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
-    app.autoCellGuesses = [[[None for _ in range(app.gridSize)] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
+    app.autoCellGuesses = [[[] for _ in range(app.gridSize)] for _ in range(app.gridSize)]
     updateGridDimensions(app)
     setupPlayButtons(app)
-
-def autoFillOneSingleUpdateStatus(app):
-    for row in range(app.gridSize):
-        for col in range(app.gridSize):
-            only = findOnly(app.autoCellGuesses[row][col])
-            if only is not None:
-                app.cellStatus[row][col] = 'single'
-                return
-
-def autoFillOneSingleUpdateValue(app):
-    for row in range(app.gridSize):
-        for col in range(app.gridSize):
-            if app.cellStatus[row][col] == 'single':
-                only = findOnly(app.autoCellGuesses[row][col])
-                if only is not None and app.cellStatus[row][col] != 'correct' or app.cellStatus[row][col] != 'starting':
-                    app.cellStatus[row][col] = 'correct'
-                    app.grid[row][col] = only
-
-def findOnly(L):
-    only = None
-    counts = 0
-    for val in L:
-        if val is not None:
-            only = val
-            counts += 1
-        if counts > 1:
-            return None
-    return only
-
-def play_onMouseRelease(app, mouseX, mouseY):
-    for button in app.playButtons:
-        button.onRelease()
-
-def play_onMouseMove(app, mouseX, mouseY):
-    for button in app.playButtons:
-        button.onHover(mouseX, mouseY)
 
 def setupPlayButtons(app):
     buttonHeight = app.menuBarHeight - 2 * app.menuBarButtonBuffer
@@ -86,6 +54,130 @@ def setupPlayButtons(app):
     app.hintShowButton = Button(app.homeButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Show', app.theme)
     app.hintFillButton = Button(app.hintShowButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Fill', app.theme)
     app.playButtons = [app.resetButton, app.homeButton, app.hintShowButton, app.hintFillButton]
+
+def find_obvious_singles(app):
+    """Identify cells with only one legal value."""
+    singles = []
+    for row in range(app.gridSize):
+        for col in range(app.gridSize):
+            if app.grid[row][col] is None:
+                legal_values = findLegalValues(app, row, col)
+                if len(legal_values) == 1:
+                    singles.append((row, col))
+    return singles
+
+def highlight_single(app, singles):
+    """Highlight the cell with only one legal value."""
+    if singles:
+        row, col = singles[0]  # Take the first obvious single found
+        app.highlightedSingles = [(row, col)]  # Store the highlighted single for persistent highlighting
+
+def apply_single_hint(app, singles):
+    """Apply the single hint by setting the cell's value."""
+    if singles:
+        row, col = singles[0]
+        legal_values = findLegalValues(app, row, col)
+        value = legal_values.pop()
+        app.grid[row][col] = value
+        app.cellStatus[row][col] = 'correct'
+        return True
+    return False
+
+def find_obvious_tuples(app, region):
+    """Find N cells in the region with exactly N unique legal values."""
+    for n in range(2, 5):  # Check tuples of size 2 to 4
+        cells_with_legals = [(i, findLegalValues(app, region[i][0], region[i][1])) for i in range(len(region)) if app.grid[region[i][0]][region[i][1]] is None]
+        for combo in combinations(cells_with_legals, n):
+            indices, legals = zip(*combo)
+            union_legals = set().union(*legals)
+            if len(union_legals) == n:
+                return indices, union_legals
+    return None
+
+def highlight_tuple(app, indices, region):
+    """Highlight the cells that form an obvious tuple."""
+    app.highlightedTuples = []  # Initialize or clear previous highlights
+    for i in indices:
+        row, col = region[i]
+        app.gridColors[row][col] = app.theme.tupleColor
+        app.highlightedTuples.append((row, col))  # Store the highlighted tuple for persistent highlighting
+
+def apply_tuple_hint(app, region, indices, union_legals):
+    """Remove the tuple values from other cells' legal values in the region."""
+    for i, cell in enumerate(region):
+        if i not in indices:
+            row, col = cell
+            legal_values = findLegalValues(app, row, col)
+            legal_values.difference_update(union_legals)
+            app.autoCellGuesses[row][col] = list(legal_values)
+
+def show_hints(app):
+    """Show hints by highlighting cells with singles or tuples."""
+    singles = find_obvious_singles(app)
+    if singles:
+        highlight_single(app, singles)
+    else:
+        # No singles, look for tuples
+        for i in range(app.gridSize):
+            # Check rows
+            row = [(i, j) for j in range(app.gridSize)]
+            tuple_info = find_obvious_tuples(app, row)
+            if tuple_info:
+                indices, union_legals = tuple_info
+                highlight_tuple(app, indices, row)
+                return
+
+            # Check columns
+            col = [(j, i) for j in range(app.gridSize)]
+            tuple_info = find_obvious_tuples(app, col)
+            if tuple_info:
+                indices, union_legals = tuple_info
+                highlight_tuple(app, indices, col)
+                return
+
+            # Check blocks
+            blockRow = (i // 3) * 3
+            blockCol = (i % 3) * 3
+            block = [(blockRow + r, blockCol + c) for r in range(3) for c in range(3)]
+            tuple_info = find_obvious_tuples(app, block)
+            if tuple_info:
+                indices, union_legals = tuple_info
+                highlight_tuple(app, indices, block)
+                return
+
+def fill_hints(app):
+    """Fill hints by applying singles or tuples."""
+    singles = find_obvious_singles(app)
+    if apply_single_hint(app, singles):
+        return
+
+    # If no singles, apply obvious tuples
+    for i in range(app.gridSize):
+        # Apply tuples in rows
+        row = [(i, j) for j in range(app.gridSize)]
+        tuple_info = find_obvious_tuples(app, row)
+        if tuple_info:
+            indices, union_legals = tuple_info
+            apply_tuple_hint(app, row, indices, union_legals)
+            return
+
+        # Apply tuples in columns
+        col = [(j, i) for j in range(app.gridSize)]
+        tuple_info = find_obvious_tuples(app, col)
+        if tuple_info:
+            indices, union_legals = tuple_info
+            apply_tuple_hint(app, col, indices, union_legals)
+            return
+
+        # Apply tuples in blocks
+        blockRow = (i // 3) * 3
+        blockCol = (i % 3) * 3
+        block = [(blockRow + r, blockCol + c) for r in range(3) for c in range(3)]
+        tuple_info = find_obvious_tuples(app, block)
+        if tuple_info:
+            indices, union_legals = tuple_info
+            apply_tuple_hint(app, block, indices, union_legals)
+            return
 
 def play_onMousePress(app, mouseX, mouseY):
     for button in app.playButtons:
@@ -99,12 +191,20 @@ def play_onMousePress(app, mouseX, mouseY):
                 app.gameFinished = True
                 setActiveScreen('splash')
             elif button.text == 'Hint Show':
-                setHintStatus(app)
+                show_hints(app)  # Highlight possible hints
             elif button.text == 'Hint Fill':
-                fillHintedCells(app)
+                fill_hints(app)  # Fill in hints automatically
             return
     if not app.isGameOver:
         app.highlightedRow, app.highlightedCol = getGridCell(app, mouseX, mouseY)
+
+def play_onMouseRelease(app, mouseX, mouseY):
+    for button in app.playButtons:
+        button.onRelease()
+
+def play_onMouseMove(app, mouseX, mouseY):
+    for button in app.playButtons:
+        button.onHover(mouseX, mouseY)
 
 def play_onKeyPress(app, key):
     removeIncorrectGuesses(app)
@@ -143,7 +243,6 @@ def play_onKeyPress(app, key):
             for row in app.cellStatus:
                 print(row)
 
-# Inspiration from CMU notes about board/grid
 def updateGridDimensions(app):
     app.gridWidth = app.width
     app.gridHeight = app.height - app.menuBarHeight
@@ -151,7 +250,6 @@ def updateGridDimensions(app):
     app.cellWidth = app.gridWidth / app.gridSize
     app.cellHeight = app.gridHeight / app.gridSize
 
-# Inspiration from CMU notes about board/grid
 def getGridCell(app, x, y):
     cellWidth, cellHeight = calculateCellSize(app)
     row, col = int(y // cellHeight), int(x // cellWidth)
@@ -159,20 +257,17 @@ def getGridCell(app, x, y):
     if col >= app.gridSize: col = app.gridSize - 1
     return row, col
 
-# Inspiration from CMU notes about board/grid
 def drawGrid(app):
     for row in range(app.gridSize):
         for col in range(app.gridSize):
             drawGridCell(app, row, col)
 
-# Inspiration from CMU notes about board/grid
 def drawGridBorder(app):
     drawRect(app.gridPaddingX, app.gridPaddingY, app.gridWidth, app.gridHeight, fill=None, border=app.theme.gridColor, borderWidth=2 * app.cellBorderThickness)
     for i in range(1, 3):
         drawLine(app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY, app.gridPaddingX + app.gridWidth * i / 3, app.gridPaddingY + app.gridHeight, lineWidth=4, fill=app.theme.gridColor)
         drawLine(app.gridPaddingX, app.gridPaddingY + app.gridHeight * i / 3, app.gridPaddingX + app.gridWidth, app.gridPaddingY + app.gridHeight * i / 3, lineWidth=4, fill=app.theme.gridColor)
 
-# Inspiration from CMU notes about board/grid
 def drawGridCell(app, row, col):
     cellLeft, cellTop = getGridCellLeftTop(app, row, col)
     cellWidth, cellHeight = calculateCellSize(app)
@@ -181,13 +276,13 @@ def drawGridCell(app, row, col):
         drawLabel(app.grid[row][col], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill=app.theme.textColor)
     elif (row, col) in app.tempIncorrect:
         drawLabel(app.tempIncorrect[(row, col)], cellLeft + cellWidth // 2, cellTop + cellHeight // 2, size=app.fontSize, fill=app.theme.wrongGuessColor)
-    for i in range(9):
+    for i in range(app.gridSize):
         if app.cellGuesses[row][col][i] is not None and app.isGuessMode:
             num = app.cellGuesses[row][col][i]
             xPos = cellWidth / 3 * (i % 3 + 1) - (cellWidth // 3) * 0.5
             yPos = cellHeight / 3 * (i // 3 + 1) - (cellHeight // 3) * 0.5
             drawLabel(str(num), cellLeft + xPos, cellTop + yPos, size=app.fontSize // 1.5, fill='grey')
-        elif app.autoCellGuesses[row][col][i] is not None and app.isManualGuessMode:
+        elif app.autoCellGuesses[row][col] and i < len(app.autoCellGuesses[row][col]) and app.autoCellGuesses[row][col][i] is not None and app.isManualGuessMode:
             num = app.autoCellGuesses[row][col][i]
             xPos = cellWidth / 3 * (i % 3 + 1) - (cellWidth // 3) * 0.5
             yPos = cellHeight / 3 * (i // 3 + 1) - (cellHeight // 3) * 0.5
@@ -201,19 +296,17 @@ def updateAutoCellGuesses(app):
     for row in range(app.gridSize):
         for col in range(app.gridSize):
             if app.grid[row][col] is None:
-                app.autoCellGuesses[row][col] = [None for _ in range(app.gridSize)]
+                app.autoCellGuesses[row][col] = []
                 for i in range(1, app.gridSize + 1):
                     if isValid(app.grid, row, col, i):
-                        app.autoCellGuesses[row][col][i - 1] = i
+                        app.autoCellGuesses[row][col].append(i)
 
-# Inspiration from CMU notes about board/grid
 def getGridCellLeftTop(app, row, col):
     cellWidth, cellHeight = calculateCellSize(app)
     cellLeft = app.gridPaddingX + col * cellWidth
     cellTop = app.gridPaddingY + row * cellHeight
     return cellLeft, cellTop
 
-# Inspiration from CMU notes about board/grid
 def calculateCellSize(app):
     cellWidth = app.gridWidth / app.gridSize
     cellHeight = app.gridHeight / app.gridSize
@@ -267,6 +360,17 @@ def updateCellColors(app):
                 app.gridColors[row][col] = app.theme.singleGuessColor
             elif app.cellStatus[row][col] == 'tuple':
                 app.gridColors[row][col] = app.theme.tupleColor
+
+    # Apply persistent highlighting for singles
+    for row, col in app.highlightedSingles:
+        if app.cellStatus[row][col] != 'correct':  # Ensure it remains highlighted until status changes
+            app.gridColors[row][col] = app.theme.singleGuessColor
+
+    # Apply persistent highlighting for tuples
+    for row, col in app.highlightedTuples:
+        if app.cellStatus[row][col] != 'correct':  # Ensure it remains highlighted until status changes
+            app.gridColors[row][col] = app.theme.tupleColor
+
     app.gridColors[app.highlightedRow][app.highlightedCol] = app.theme.highlightedColor
 
 def drawEndGameScreen(app):
@@ -288,8 +392,8 @@ def play_redrawAll(app):
     for button in app.playButtons:
         button.draw()
 
-# Inspiration from CMU Mini Sudoku Solver HW
 def findLegalValues(app, row, col):
+    """Find all legal values for a cell at (row, col)."""
     if app.grid[row][col] is not None:
         return set()
 
@@ -307,65 +411,3 @@ def findLegalValues(app, row, col):
                 legalValues.discard(app.grid[i][j])
 
     return legalValues
-
-def setHintStatus(app):
-    clearPreviousHints(app)
-    if not setSingleHintStatus(app):
-        markObviousTuples(app)
-
-def setSingleHintStatus(app):
-    for row in range(app.gridSize):
-        for col in range(app.gridSize):
-            if app.grid[row][col] is None:
-                only = findOnly(app.autoCellGuesses[row][col])
-                if only is not None:
-                    app.cellStatus[row][col] = 'single'
-                    return True
-    return False
-
-def clearPreviousHints(app):
-    for row in range(app.gridSize):
-        for col in range(app.gridSize):
-            if app.cellStatus[row][col] in ['single', 'tuple']:
-                app.cellStatus[row][col] = 'normal'
-
-def markObviousTuples(app):
-    if markTuplesInRegion(app, [(0, col) for col in range(9)]):
-        return
-    if markTuplesInRegion(app, [(row, 0) for row in range(9)]):
-        return
-    blockRow, blockCol = 0, 0
-    markTuplesInRegion(app, [(blockRow + i, blockCol + j) for i in range(3) for j in range(3)])
-
-def markTuplesInRegion(app, cells):
-    cellLegalValues = {cell: findLegalValues(app, cell[0], cell[1]) for cell in cells if app.grid[cell[0]][cell[1]] is None}
-
-    for n in range(2, 9):
-        for cellCombination in combinations(cellLegalValues.keys(), n):
-            combinedValues = set().union(*[cellLegalValues[cell] for cell in cellCombination])
-            if len(combinedValues) == n:
-                for cell in cellCombination:
-                    app.cellStatus[cell[0]][cell[1]] = 'tuple'
-                return True
-    return False
-
-def fillHintedCells(app):
-    fillSingleHintedCells(app)
-    fillTupleHintedCells(app)
-
-def fillSingleHintedCells(app):
-    for row in range(app.gridSize):
-        for col in range(app.gridSize):
-            if app.cellStatus[row][col] == 'single':
-                only = findOnly(app.autoCellGuesses[row][col])
-                if only is not None and app.cellStatus[row][col] not in ['correct', 'starting']:
-                    app.cellStatus[row][col] = 'correct'
-                    app.grid[row][col] = only
-
-def fillTupleHintedCells(app):
-    for row in range(9):
-        for col in range(9):
-            if app.cellStatus[row][col] == 'tuple' and app.grid[row][col] is None:
-                legalValues = findLegalValues(app, row, col)
-                if len(legalValues) == 1:
-                    app.grid[row][col] = legalValues.pop()

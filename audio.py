@@ -20,3 +20,9 @@ def setupSounds(app):
     # Pixabay - Glass Of Winem from Monument_Music
     app.splashMusic = loadSound('audio/splash.mp3')
 
+
+    # Pixabay - 'Correct' from chrisiex1
+    app.correctSound = loadSound('audio/correct.mp3')
+
+    # Pixabay - 'Error #4' from UNIVERSFIELD
+    app.incorrectSound = loadSound('audio/incorrect.mp3')
