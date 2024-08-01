@@ -2,6 +2,9 @@ from cmu_graphics import *
 from button import *
 import time
 
+def keybinds_onScreenActivate(app):
+    setupKeybindsScreen(app)
+
 def setupKeybindsScreen(app):
     app.keybindsTitle = 'KEYBINDS'
     app.keybindsButtonWidth = 400

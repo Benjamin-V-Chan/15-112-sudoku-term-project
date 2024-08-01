@@ -18,7 +18,7 @@ def setupSettingsScreen(app):
     setupSettingsScreenButtons(app)
 
 def resetSettings(app):
-    app.themeIndex = 0
+    app.themeIndex = 2
     app.theme = app.themes[app.themeIndex]
     app.keybinds = {
         'Up': 'up',
@@ -58,7 +58,6 @@ def settings_onMousePress(app, mouseX, mouseY):
                 resetSettings(app)
             elif button.text == 'Keybinds':
                 setActiveScreen('keybinds')
-                setupKeybindsScreen(app)
             elif button.text == 'Mute Volume' or button.text == 'Unmute Volume':
                 app.muteVolume = not app.muteVolume
                 setupSettingsScreenButtons(app)  # Update buttons to reflect the mute status

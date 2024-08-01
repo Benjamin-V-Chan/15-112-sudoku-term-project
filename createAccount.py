@@ -3,6 +3,9 @@ from button import Button
 from user import *
 from functions import *
 
+def createAccount_onScreenActivate(app):
+    setupCreateAccountScreen(app)
+    
 def setupCreateAccountScreen(app):
     app.createAccountTitle = 'CREATE ACCOUNT'
     app.createAccountButtonWidth = 230

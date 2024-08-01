@@ -4,6 +4,9 @@ from createAccount import *
 from button import Button
 from functions import *
 
+def login_onScreenActivate(app):
+    setupLoginScreen(app)
+
 def setupLoginScreen(app):
     app.loginTitle = 'LOGIN'
     app.loginButtonWidth = 230
@@ -57,7 +60,6 @@ def login_onMousePress(app, mouseX, mouseY):
             if button.text == 'Back':
                 setActiveScreen('splash')
             elif button.text == 'Create Account':
-                setupCreateAccountScreen(app)
                 setActiveScreen('createAccount')
             elif button == app.usernameButton:
                 app.typingField = 'username'

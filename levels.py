@@ -2,6 +2,9 @@ from cmu_graphics import *
 from button import *
 from play import *
 
+def levels_onScreenActivate(app):
+    setupLevelsScreen(app)
+
 def setupLevelsScreen(app):
     app.levels = ['easy', 'medium', 'hard', 'expert', 'evil']
     app.levelsButtonWidth = 120
@@ -52,7 +55,6 @@ def levels_onMousePress(app, mouseX, mouseY):
             button.onClick()
             app.difficulty = app.levels[i]
             setActiveScreen('play')
-            setupPlayScreen(app)
             return
     if app.backButton.checkClicked(mouseX, mouseY):
         app.difficulty = None

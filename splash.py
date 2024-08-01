@@ -44,16 +44,6 @@ def splash_redrawAll(app):
     drawTitle(app)
     drawButtons(app)
 
-def setupScreen(app, screen):
-    if screen == 'play':
-        setupLevelsScreen(app)
-    elif screen == 'help':
-        setupHelpScreen(app)
-    elif screen == 'settings':
-        setupSettingsScreen(app)
-    elif screen == 'login':
-        setupLoginScreen(app)
-
 def splash_onMousePress(app, mouseX, mouseY):
     for button in app.splashScreenAllButtons:
         if button.checkClicked(mouseX, mouseY):
@@ -64,9 +54,12 @@ def splash_onMousePress(app, mouseX, mouseY):
             elif screen == 'logout': 
                 app.loggedIn = False
                 setActiveScreen('splash')
+            elif screen == 'help':
+                setActiveScreen('help')
+            elif screen == 'settings':
+                setActiveScreen('settings')
             else: 
                 setActiveScreen(screen)
-            setupScreen(app, screen)
             break
 
 def splash_onMouseRelease(app, mouseX, mouseY):

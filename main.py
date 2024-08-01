@@ -16,7 +16,6 @@ def onAppStart(app):
     resetSettings(app)
     setupSounds(app)
     setActiveScreen('splash')
-    setupSplashScreen(app)
 
 def main():
     runAppWithScreens(initialScreen='splash', width=700, height=700)
