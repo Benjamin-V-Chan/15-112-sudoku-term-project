@@ -1,5 +1,6 @@
 from cmu_graphics import *
-from functions import isValid
+from functions import *
+from gameOver import *
 from sudokuGenerator import generateBoard
 from button import Button
 from itertools import combinations
@@ -219,6 +220,7 @@ def play_onKeyPress(app, key):
                 if all(cell is not None for row in app.grid for cell in row):
                     app.wonGame = True
                     app.isGameOver = True
+                    setupGameOverScreen(app)
             else:
                 app.remainingLives -= 1
                 app.cellStatus[app.highlightedRow][app.highlightedCol] = 'incorrect'
@@ -226,6 +228,7 @@ def play_onKeyPress(app, key):
                 if app.remainingLives <= 0:
                     app.wonGame = False
                     app.isGameOver = True
+                    setupGameOverScreen(app)
                 app.tempIncorrect[(app.highlightedRow, app.highlightedCol)] = num
             app.cellGuesses[app.highlightedRow][app.highlightedCol] = [None for _ in range(app.gridSize)]
         elif key.isdigit() and key != '0' and app.isGuessMode and (app.cellStatus[app.highlightedRow][app.highlightedCol] not in ['correct', 'starting']):
@@ -236,12 +239,6 @@ def play_onKeyPress(app, key):
         elif key == 'a':
             app.isManualGuessMode = not app.isManualGuessMode
             app.isGuessMode = False
-        elif key == 'd':
-            print()
-            print('#########')
-            print()
-            for row in app.cellStatus:
-                print(row)
 
 def updateGridDimensions(app):
     app.gridWidth = app.width

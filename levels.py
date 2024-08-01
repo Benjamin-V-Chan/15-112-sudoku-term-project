@@ -1,7 +1,6 @@
 from cmu_graphics import *
 from button import *
 from play import *
-from play import setupPlayScreen
 
 def setupLevelsScreen(app):
     app.levels = ['easy', 'medium', 'hard', 'expert', 'evil']

@@ -1,7 +1,6 @@
 import os
 
 def updateAppWithUserInfo(app):
-    print(f"Updating app with user info: ThemeIndex: {app.userInfo.themeIndex}, Keybinds: {app.userInfo.keybinds}, MuteVolume: {app.userInfo.muteVolume}")
     app.theme = app.themes[app.userInfo.themeIndex]
     app.keybinds = app.userInfo.keybinds
     app.muteVolume = app.userInfo.muteVolume
@@ -42,3 +41,37 @@ def retrieveUserInfo(username):
 def passwordMatches(username, password):
     userInfo = retrieveUserInfo(username)
     return userInfo['password'] == password
+
+def isValid(grid, row, col, num):
+    """
+    Check if it's valid to place a number in a specific cell.
+    
+    Args:
+        grid (list of list of int): The Sudoku board represented as a 2D list.
+        row (int): The row index of the cell.
+        col (int): The column index of the cell.
+        num (int): The number to be placed in the cell.
+        
+    Returns:
+        bool: True if the number can be placed, False otherwise.
+    """
+    
+    # Check the row
+    for c in range(9):
+        if grid[row][c] == num:
+            return False
+
+    # Check the column
+    for r in range(9):
+        if grid[r][col] == num:
+            return False
+
+    # Check the 3x3 subgrid
+    startRow, startCol = 3 * (row // 3), 3 * (col // 3)
+    for r in range(startRow, startRow + 3):
+        for c in range(startCol, startCol + 3):
+            if grid[r][c] == num:
+                return False
+
+    # If no conflicts, return True
+    return True
