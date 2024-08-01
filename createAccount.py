@@ -1,6 +1,7 @@
 from cmu_graphics import *
-from button import *
+from button import Button
 from user import *
+from functions import *
 
 def setupCreateAccountScreen(app):
     app.createAccountTitle = 'CREATE ACCOUNT'
@@ -10,14 +11,18 @@ def setupCreateAccountScreen(app):
     app.createAccountButtonX = app.width / 2 - app.createAccountButtonWidth / 2
     app.createAccountButtonY = 200
     app.typingField = None
+    app.messageTimer = 0
+    resetCreateAccountInfo(app)
+    setupCreateAccountScreenButtons(app)
+
+def resetCreateAccountInfo(app):
     app.createAccountUsername = ''
     app.createAccountPassword = ''
     app.createAccountMessage = ''
-    setupCreateAccountScreenButtons(app)
 
 def setupCreateAccountScreenButtons(app):
-    app.usernameButton = Button(app.createAccountButtonX, app.createAccountButtonY, app.createAccountButtonWidth, app.createAccountButtonHeight, 'Username', app.theme)
-    app.passwordButton = Button(app.createAccountButtonX, app.createAccountButtonY + app.createAccountButtonHeight + app.createAccountButtonBuffer, app.createAccountButtonWidth, app.createAccountButtonHeight, 'Password', app.theme)
+    app.usernameButton = Button(app.createAccountButtonX, app.createAccountButtonY, app.createAccountButtonWidth, app.createAccountButtonHeight, app.createAccountUsername or 'Username', app.theme)
+    app.passwordButton = Button(app.createAccountButtonX, app.createAccountButtonY + app.createAccountButtonHeight + app.createAccountButtonBuffer, app.createAccountButtonWidth, app.createAccountButtonHeight, app.createAccountPassword or 'Password', app.theme)
     app.createAccountButton = Button(app.createAccountButtonX, app.createAccountButtonY + 2 * (app.createAccountButtonHeight + app.createAccountButtonBuffer), app.createAccountButtonWidth, app.createAccountButtonHeight, 'Create Account', app.theme)
     app.createAccountBackButton = Button(app.createAccountButtonX, app.createAccountButtonY + 3 * (app.createAccountButtonHeight + app.createAccountButtonBuffer), app.createAccountButtonWidth, app.createAccountButtonHeight, 'Back', app.theme)
     app.createAccountAllButtons = [app.usernameButton, app.passwordButton, app.createAccountButton, app.createAccountBackButton]
@@ -43,7 +48,11 @@ def drawCreateAccountMessage(app):
     drawLabel(app.createAccountMessage, messageX, messageY, size=20, fill='red', align='center')
 
 def createAccount_onMousePress(app, mouseX, mouseY):
+    if app.messageTimer > 0:
+        return  # Disable user interaction when a message is active
+
     for button in app.createAccountAllButtons:
+        button.isSelected = False
         if button.checkClicked(mouseX, mouseY):
             button.onClick()
             if button.text == 'Back':
@@ -51,70 +60,99 @@ def createAccount_onMousePress(app, mouseX, mouseY):
             elif button.text == 'Create Account':
                 handleCreateAccount(app)
             elif button == app.usernameButton:
+                button.isSelected = True
                 app.typingField = 'username'
                 app.createAccountUsername = ''
                 app.usernameButton.text = ''
-                app.createAccountMessage = 'Type a username'
+                app.createAccountMessage = 'Type your username'
             elif button == app.passwordButton:
+                button.isSelected = True
                 app.typingField = 'password'
                 app.createAccountPassword = ''
                 app.passwordButton.text = ''
-                app.createAccountMessage = 'Type a password'
-            return
+                app.createAccountMessage = 'Type your password'
+            break
+
+    setupCreateAccountScreenButtons(app)
+
+def fixEmptyCreateAccountFields(app):
+    if not app.createAccountUsername.strip():
+        app.createAccountUsername = ''
+    if not app.createAccountPassword.strip():
+        app.createAccountPassword = ''
 
 def handleCreateAccount(app):
-    if usernameExists(app.createAccountUsername):
+    username = app.createAccountUsername.strip()
+    password = app.createAccountPassword.strip()
+
+    if usernameExists(username):
         app.createAccountMessage = 'Username already exists'
-    elif app.createAccountUsername == '':
+    elif not username:
         app.createAccountMessage = 'Username cannot be empty'
-    elif app.createAccountPassword == '':
+    elif not password:
         app.createAccountMessage = 'Password cannot be empty'
-    elif app.createAccountUsername.lower() == 'username':
+    elif username.lower() == 'username':
         app.createAccountMessage = 'Invalid username'
-    elif app.createAccountPassword.lower() == 'password':
+    elif password.lower() == 'password':
         app.createAccountMessage = 'Invalid password'
     else:
         app.loggedIn = True
-        saveUserInfo(app.createAccountUsername, app.createAccountPassword, app.theme, app.keybinds, app.muteVolume)
-        app.userInfo = User(app.createAccountUsername)
+        saveUserInfo(username, password, app.themeIndex, app.keybinds, app.muteVolume)
+        app.userInfo = User(username)
         setActiveScreen('splash')
-    clearCreateAccountFields(app)
+        return  # Exit early since no error occurred
 
-def clearCreateAccountFields(app):
-    app.createAccountUsername = ''
-    app.createAccountPassword = ''
-    updateCreateAccountButtons(app)
+    # Set message timer if there was an error
+    app.messageTimer = 120  # 120 steps for 2 seconds at 60 FPS
 
-def usernameExists(username):
-    return os.path.isfile(f'users/{username}')
+def createAccount_onStep(app):
+    if app.messageTimer > 0:
+        app.messageTimer -= 1
 
 def createAccount_onKeyPress(app, key):
+    if app.messageTimer > 0:
+        return  # Disable user interaction when a message is active
+
+    if not (len(key) == 1 and (key.isalnum() or key in ['backspace', 'enter'])):
+        return
+
     if app.typingField is not None:
         if app.typingField == 'username':
-            if key == 'backspace' and app.createAccountUsername:
-                app.createAccountUsername = app.createAccountUsername[:-1]
-            elif key == 'enter':
-                app.typingField = None
-            elif key.isalpha() or key.isdigit():
-                app.createAccountUsername += key
-            app.usernameButton.text = app.createAccountUsername
+            handleTyping(app, key, 'username')
         elif app.typingField == 'password':
-            if key == 'backspace' and app.createAccountPassword:
-                app.createAccountPassword = app.createAccountPassword[:-1]
-            elif key == 'enter':
-                app.typingField = None
-            elif key.isalpha() or key.isdigit():
-                app.createAccountPassword += key
-            app.passwordButton.text = app.createAccountPassword
+            handleTyping(app, key, 'password')
 
-def updateCreateAccountButtons(app):
-    app.usernameButton.text = app.createAccountUsername or 'Username'
-    app.passwordButton.text = app.createAccountPassword or 'Password'
+    fixEmptyCreateAccountFields(app)
+    setupCreateAccountScreenButtons(app)
+
+def handleTyping(app, key, field):
+    if field == 'username':
+        if key == 'backspace' and app.createAccountUsername:
+            app.createAccountUsername = app.createAccountUsername[:-1]
+        elif key == 'enter':
+            app.typingField = None
+        elif key.isalnum():
+            app.createAccountUsername += key
+        app.usernameButton.text = app.createAccountUsername
+    elif field == 'password':
+        if key == 'backspace' and app.createAccountPassword:
+            app.createAccountPassword = app.createAccountPassword[:-1]
+        elif key == 'enter':
+            app.typingField = None
+        elif key.isalnum():
+            app.createAccountPassword += key
+        app.passwordButton.text = app.createAccountPassword
 
 def createAccount_onMouseRelease(app, mouseX, mouseY):
+    if app.messageTimer > 0:
+        return  # Disable user interaction when a message is active
+
     for button in app.createAccountAllButtons:
         button.onRelease()
 
 def createAccount_onMouseMove(app, mouseX, mouseY):
+    if app.messageTimer > 0:
+        return  # Disable user interaction when a message is active
+
     for button in app.createAccountAllButtons:
         button.onHover(mouseX, mouseY)

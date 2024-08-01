@@ -15,6 +15,9 @@ class Button:
         self.isSelected = False
         self.customFill = customFill
 
+    def __eq__(self, other):
+        return self.text == other.text and self.x == other.x and self.y == other.y
+
     def draw(self):
         borderColor = self.theme.hoverBorderColor if self.isHovered else self.theme.buttonBorderColor
         if self.isSelected or self.isClicked:
