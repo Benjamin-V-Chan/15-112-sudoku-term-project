@@ -11,8 +11,8 @@ def onAppStart(app):
     app.titleSize = 65
     app.gameFinished = False
     app.loggedIn = False
-    app.themes = [lightTheme, redTheme, blueTheme, greenTheme, purpleTheme, orangeTheme, pinkTheme, brownTheme, blackTheme]
-
+    app.themes = [lightTheme, redTheme, blueTheme, greenTheme]
+    
     resetSettings(app)
     setupSounds(app)
     setActiveScreen('splash')

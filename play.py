@@ -1,6 +1,6 @@
 from cmu_graphics import *
 from gameOver import *
-from sudokuGenerator import generateBoard
+from sudokuGenerator import *
 from button import Button
 from itertools import combinations
 import time
@@ -29,9 +29,9 @@ def resetPlayScreen(app):
     app.isGuessMode = False
     app.tempIncorrect = {}
     app.wonGame = False
-    app.highlightedSingles = []  # Initialize list to track singles hints
-    app.highlightedTuples = []  # Initialize list to track tuples hints
-    app.noHintAvailableTime = 0  # Track time for no hints available message
+    app.highlightedSingles = []
+    app.highlightedTuples = []
+    app.noHintAvailableTime = 0
 
 def generateAndSetupGrid(app):
     app.grid = generateBoard(app.difficulty)
@@ -58,143 +58,114 @@ def setupPlayButtons(app):
     app.hintFillButton = Button(app.hintShowButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Fill', app.theme)
     app.playButtons = [app.resetButton, app.homeButton, app.hintShowButton, app.hintFillButton]
 
-def find_obvious_singles(app):
+def findObviousSingles(app):
     """Identify cells with only one legal value."""
     singles = []
     for row in range(app.gridSize):
         for col in range(app.gridSize):
             if app.grid[row][col] is None:
-                legal_values = findLegalValues(app, row, col)
-                if len(legal_values) == 1:
+                legalValues = findLegalValues(app, row, col)
+                if len(legalValues) == 1:
                     singles.append((row, col))
     return singles
 
-def highlight_single(app, singles):
+def highlightSingle(app, singles):
     """Highlight the cell with only one legal value."""
     if singles:
-        row, col = singles[0]  # Take the first obvious single found
-        app.highlightedSingles = [(row, col)]  # Store the highlighted single for persistent highlighting
+        row, col = singles[0]
+        app.highlightedSingles = [(row, col)]
 
-def apply_single_hint(app, singles):
+def applySingleHint(app, singles):
     """Apply the single hint by setting the cell's value."""
     if singles:
         row, col = singles[0]
-        legal_values = findLegalValues(app, row, col)
-        if legal_values:  # Ensure there are legal values available
-            value = legal_values.pop()
+        legalValues = findLegalValues(app, row, col)
+        if legalValues:
+            value = legalValues.pop()
             app.grid[row][col] = value
             app.cellStatus[row][col] = 'correct'
             return True
     return False
 
-def find_obvious_tuples(app, region):
+def findObviousTuples(app, region):
     """Find N cells in the region with exactly N unique legal values."""
-    # Create a list of cells in the region with their legal values
-    cells_with_legals = [(i, findLegalValues(app, region[i][0], region[i][1])) for i in range(len(region)) if app.grid[region[i][0]][region[i][1]] is None]
+    # List of cells in the region with each legal values
+    cellsWithLegals = [(i, findLegalValues(app, region[i][0], region[i][1])) for i in range(len(region)) if app.grid[region[i][0]][region[i][1]] is None]
     
-    # Iterate through different sizes of combinations (2 to 4 for tuples)
-    for n in range(2, 5):  # We can adjust the size range based on typical Sudoku strategies
-        for combo in combinations(cells_with_legals, n):
+    for n in range(2, 5):
+        for combo in combinations(cellsWithLegals, n):
             indices, legals = zip(*combo)
-            union_legals = set().union(*legals)
-            if len(union_legals) == n:
-                return indices, union_legals
+            unionLegals = set().union(*legals)
+            if len(unionLegals) == n:
+                return indices, unionLegals
     return None
 
-def apply_tuple_hint(app, region, indices, union_legals):
+def applyTupleHint(app, region, indices, unionLegals):
     """Apply the tuple hint by assigning values to the grid."""
-    # Iterate through each index in the indices and update grid if possible
     applied = False
     for i in indices:
         row, col = region[i]
-        # Check for only legal position for the value in the union of legals
-        if len(union_legals) == 1:
-            value = union_legals.pop()
+        if len(unionLegals) == 1:
+            value = unionLegals.pop()
             app.grid[row][col] = value
             app.cellStatus[row][col] = 'correct'
             applied = True
         else:
-            # Attempt to apply the value with backtracking logic
-            for value in union_legals:
-                # Try placing the value
+            for value in unionLegals:
                 if isValid(app.grid, row, col, value):
                     app.grid[row][col] = value
                     app.cellStatus[row][col] = 'correct'
                     applied = True
-                    break  # Stop trying if we found a valid placement
+                    break
 
     return applied
 
-def highlight_tuple(app, indices, region):
+def highlightTuple(app, indices, region):
     """Highlight the cells that form an obvious tuple."""
-    app.highlightedTuples = []  # Initialize or clear previous highlights
+    app.highlightedTuples = []
     for i in indices:
         row, col = region[i]
         app.gridColors[row][col] = app.theme.tupleColor
         app.highlightedTuples.append((row, col))  # Store the highlighted tuple for persistent highlighting
 
-def is_board_solvable(app, grid):
-    """Check if the board is solvable (basic backtracking solver)."""
-    empty_pos = find_empty_position(grid)
-    if not empty_pos:
-        return True  # No empty positions means the board is solved
-    row, col = empty_pos
-
-    for num in range(1, 10):
-        if isValid(grid, row, col, num):
-            grid[row][col] = num
-            if is_board_solvable(app, grid):
-                return True
-            grid[row][col] = None  # Backtrack
-
-    return False
-
-def find_empty_position(grid):
-    """Find an empty position on the grid."""
-    for row in range(len(grid)):
-        for col in range(len(grid[0])):
-            if grid[row][col] is None:
-                return (row, col)
-    return None
-
 def show_hints(app):
     """Show hints by highlighting cells with singles or tuples."""
-    singles = find_obvious_singles(app)
+    singles = findObviousSingles(app)
     if singles:
-        highlight_single(app, singles)
+        highlightSingle(app, singles)
     else:
         # No singles, look for tuples
         for i in range(app.gridSize):
             # Check rows
             row = [(i, j) for j in range(app.gridSize)]
-            tuple_info = find_obvious_tuples(app, row)
+            tuple_info = findObviousTuples(app, row)
             if tuple_info:
-                indices, union_legals = tuple_info
-                highlight_tuple(app, indices, row)
+                indices, unionLegals = tuple_info
+                highlightTuple(app, indices, row)
                 return
 
             # Check columns
             col = [(j, i) for j in range(app.gridSize)]
-            tuple_info = find_obvious_tuples(app, col)
+            tuple_info = findObviousTuples(app, col)
             if tuple_info:
-                indices, union_legals = tuple_info
-                highlight_tuple(app, indices, col)
+                indices, unionLegals = tuple_info
+                highlightTuple(app, indices, col)
                 return
 
             # Check blocks
             blockRow = (i // 3) * 3
             blockCol = (i % 3) * 3
             block = [(blockRow + r, blockCol + c) for r in range(3) for c in range(3)]
-            tuple_info = find_obvious_tuples(app, block)
+            tuple_info = findObviousTuples(app, block)
             if tuple_info:
-                indices, union_legals = tuple_info
-                highlight_tuple(app, indices, block)
+                indices, unionLegals = tuple_info
+                highlightTuple(app, indices, block)
                 return
 
 def fill_hints(app):
     """Fill hints by applying singles or tuples."""
-    singles = find_obvious_singles(app)
-    if apply_single_hint(app, singles):
+    singles = findObviousSingles(app)
+    if applySingleHint(app, singles):
         return
 
     # If no singles, apply obvious tuples
@@ -202,28 +173,28 @@ def fill_hints(app):
     for i in range(app.gridSize):
         # Apply tuples in rows
         row = [(i, j) for j in range(app.gridSize)]
-        tuple_info = find_obvious_tuples(app, row)
+        tuple_info = findObviousTuples(app, row)
         if tuple_info:
-            indices, union_legals = tuple_info
-            if apply_tuple_hint(app, row, indices, union_legals):
+            indices, unionLegals = tuple_info
+            if applyTupleHint(app, row, indices, unionLegals):
                 return
 
         # Apply tuples in columns
         col = [(j, i) for j in range(app.gridSize)]
-        tuple_info = find_obvious_tuples(app, col)
+        tuple_info = findObviousTuples(app, col)
         if tuple_info:
-            indices, union_legals = tuple_info
-            if apply_tuple_hint(app, col, indices, union_legals):
+            indices, unionLegals = tuple_info
+            if applyTupleHint(app, col, indices, unionLegals):
                 return
 
         # Apply tuples in blocks
         blockRow = (i // 3) * 3
         blockCol = (i % 3) * 3
         block = [(blockRow + r, blockCol + c) for r in range(3) for c in range(3)]
-        tuple_info = find_obvious_tuples(app, block)
+        tuple_info = findObviousTuples(app, block)
         if tuple_info:
-            indices, union_legals = tuple_info
-            if apply_tuple_hint(app, block, indices, union_legals):
+            indices, unionLegals = tuple_info
+            if applyTupleHint(app, block, indices, unionLegals):
                 return
 
     # If no hints applied, set the no-hint message
@@ -236,8 +207,10 @@ def displayNoHintsMessage(app):
         current_time = time.time()
         if current_time - app.noHintAvailableTime < 1:  # Show the message for 1 second
             drawLabel("No available hints", app.width / 2, app.height / 2, size=24, fill='red', align='center')
-        else:
-            app.noHintAvailableTime = 0  # Reset the timer after 1 second
+
+def play_onStep(app):
+    if time.time() - app.noHintAvailableTime > 1:
+        app.noHintAvailableTime = 0
 
 def checkForGameWon(app):
     if app.remainingLives == 0:

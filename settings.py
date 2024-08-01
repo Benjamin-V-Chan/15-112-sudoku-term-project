@@ -18,7 +18,7 @@ def setupSettingsScreen(app):
     setupSettingsScreenButtons(app)
 
 def resetSettings(app):
-    app.themeIndex = 2
+    app.themeIndex = 1
     app.theme = app.themes[app.themeIndex]
     app.keybinds = {
         'Up': 'up',
