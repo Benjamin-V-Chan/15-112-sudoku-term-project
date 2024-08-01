@@ -9,8 +9,11 @@ def setupPlayScreen(app):
     app.gridPaddingY = 0
     app.cellBorderThickness = 2
     app.fontSize = 22
-    app.playScreenButtonWidth = 125
+    app.playScreenButtonWidth = 135
     app.highlightedRow, app.highlightedCol = 0, 0
+    app.splashMusic.pause()
+    if not app.muteVolume:
+        app.playMusic.play(loop=True, volume=0)
     resetPlayScreen(app)
     generateAndSetupGrid(app)
 
@@ -93,6 +96,8 @@ def play_onMousePress(app, mouseX, mouseY):
                 resetPlayScreen(app)
                 generateAndSetupGrid(app)
             elif button.text == 'Home':
+                app.playMusic.pause()
+                app.gameFinished = True
                 setActiveScreen('splash')
             elif button.text == 'Hint Show':
                 setHintStatus(app)

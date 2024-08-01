@@ -3,19 +3,18 @@ from button import *
 import time
 
 def setupKeybindsScreen(app):
-    app.keybindsTitle = 'Keybinds'
-    app.keybindsTitleSize = 65
+    app.keybindsTitle = 'KEYBINDS'
     app.keybindsButtonWidth = 400
-    app.keybindsButtonHeight = 50
-    app.keybindsButtonBuffer = 10
+    app.keybindsButtonHeight = 55
+    app.keybindsButtonBuffer = 15
     app.keybindsButtonX = app.width / 2 - app.keybindsButtonWidth / 2
-    app.keybindsButtonY = 180
+    app.keybindsButtonY = 160
     app.currentKeyBindCheck = None
     app.defaultKeybindsMessage = 'Press a key to change keybind'
     app.keybindsMessage = app.defaultKeybindsMessage
     app.keybindsMessageX = app.width / 2
-    app.keybindsMessageY = app.height - 100
-    app.keybindsMessageSize = 20
+    app.keybindsMessageY = app.height - 35
+    app.keybindsMessageSize = 25
     app.keyInUseStartTime = 0
     app.keyInUse = False  # To track if a key is already in use
     setupKeybindsScreenButtons(app)
@@ -58,7 +57,7 @@ def drawKeyBindsMessage(app):
 def drawKeybindsTitle(app):
     titleX = app.width / 2
     titleY = 100
-    drawLabel(app.keybindsTitle, titleX, titleY, size=app.keybindsTitleSize, fill=app.theme.textColor, font='Arial')
+    drawLabel(app.keybindsTitle.upper(), titleX, titleY, size=app.titleSize, fill=app.theme.titleColor, bold=True, align='center', border='black', borderWidth=1)
 
 def drawKeybindsButtons(app):
     app.exitButton.draw()
@@ -84,7 +83,7 @@ def keybinds_onMousePress(app, mouseX, mouseY):
         return
 
     for button in app.keybindsAllButtons:
-        button.isSelected = False  # Deselect all buttons
+        button.isSelected = False
 
     for button in app.keybindsAllButtons:
         if button.checkClicked(mouseX, mouseY):

@@ -1,7 +1,8 @@
 from cmu_graphics import *
+from audio import *
 
 class Button:
-    def __init__(self, x, y, width, height, text, theme, textSize=20):
+    def __init__(self, x, y, width, height, text, theme, textSize=25, customFill=None):
         self.x = x
         self.y = y
         self.width = width
@@ -12,6 +13,7 @@ class Button:
         self.isHovered = False
         self.isClicked = False
         self.isSelected = False
+        self.customFill = customFill
 
     def draw(self):
         borderColor = self.theme.hoverBorderColor if self.isHovered else self.theme.buttonBorderColor
@@ -19,7 +21,11 @@ class Button:
             fillColor = self.theme.clickColor
         else:
             fillColor = self.theme.buttonColor
-        drawRect(self.x, self.y, self.width, self.height, fill=fillColor, border=borderColor)
+        if self.customFill is not None:
+            fillColor = self.customFill
+        else:
+            fillColor = self.theme.buttonColor
+        drawRect(self.x, self.y, self.width, self.height, fill=fillColor, border=borderColor, borderWidth=4)
         drawLabel(self.text, self.x + self.width / 2, self.y + self.height / 2, size=self.textSize, fill=self.theme.textColor, bold=True, align='center')
 
     def checkClicked(self, mouseX, mouseY):
@@ -29,6 +35,8 @@ class Button:
         self.isHovered = self.checkClicked(mouseX, mouseY)
 
     def onClick(self):
+        if not app.muteVolume:
+            app.buttonClick.play(restart=True)
         self.isClicked = True
 
     def onRelease(self):

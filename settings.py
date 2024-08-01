@@ -7,12 +7,12 @@ def settings_onScreenActivate(app):
 
 def setupSettingsScreen(app):
     app.settingButtons = []
-    app.settingsTitle = 'Settings'
-    app.settingButtonWidth = 200
-    app.settingButtonHeight = 50
-    app.settingButtonBuffer = 10
+    app.settingsTitle = 'SETTINGS'
+    app.settingButtonWidth = 230
+    app.settingButtonHeight = 70
+    app.settingButtonBuffer = 20
     app.settingButtonX = app.width / 2 - app.settingButtonWidth / 2
-    app.settingButtonY = 180
+    app.settingButtonY = 200
     setupSettingsScreenButtons(app)
     
 def resetSettings(app):
@@ -31,7 +31,10 @@ def resetSettings(app):
 def setupSettingsScreenButtons(app):
     app.changeThemeButton = Button(app.settingButtonX, app.settingButtonY, app.settingButtonWidth, app.settingButtonHeight, 'Change Theme', app.theme)
     app.keybindsButton = Button(app.settingButtonX, app.settingButtonY + app.settingButtonHeight + app.settingButtonBuffer, app.settingButtonWidth, app.settingButtonHeight, 'Keybinds', app.theme)
-    app.muteVolumeButton = Button(app.settingButtonX, app.settingButtonY + 2 * (app.settingButtonHeight + app.settingButtonBuffer), app.settingButtonWidth, app.settingButtonHeight, 'Mute Volume', app.theme)
+    if app.muteVolume:
+        app.muteVolumeButton = Button(app.settingButtonX, app.settingButtonY + 2 * (app.settingButtonHeight + app.settingButtonBuffer), app.settingButtonWidth, app.settingButtonHeight, 'Unmute Volume', app.theme)
+    else:
+        app.muteVolumeButton = Button(app.settingButtonX, app.settingButtonY + 2 * (app.settingButtonHeight + app.settingButtonBuffer), app.settingButtonWidth, app.settingButtonHeight, 'Mute Volume', app.theme)
     app.resetButton = Button(app.settingButtonX, app.settingButtonY + 3 * (app.settingButtonHeight + app.settingButtonBuffer), app.settingButtonWidth, app.settingButtonHeight, 'Reset', app.theme)
     app.exitButton = Button(app.settingButtonX, app.settingButtonY + 4 * (app.settingButtonHeight + app.settingButtonBuffer), app.settingButtonWidth, app.settingButtonHeight, 'Save and Exit', app.theme)
 
@@ -53,6 +56,9 @@ def settings_onMousePress(app, mouseX, mouseY):
             elif button.text == 'Keybinds':
                 setActiveScreen('keybinds')
                 setupKeybindsScreen(app)
+            elif button.text == 'Mute Volume' or button.text == 'Unmute Volume':
+                app.muteVolume = not app.muteVolume
+    print(app.muteVolume)
 
 
 def settings_redrawAll(app):
@@ -75,4 +81,4 @@ def settings_onMouseRelease(app, mouseX, mouseY):
 def drawTitle(app):
     titleX = app.width / 2
     titleY = 100
-    drawLabel(app.settingsTitle, titleX, titleY, size=app.titleSize, fill=app.colors[0], bold=True, align='center', border='black', borderWidth=1)
+    drawLabel(app.settingsTitle.upper(), titleX, titleY, size=app.titleSize, fill=app.theme.titleColor, bold=True, align='center', border='black', borderWidth=1)
