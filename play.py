@@ -58,6 +58,9 @@ def setupPlayButtons(app):
     app.hintFillButton = Button(app.hintShowButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Fill', app.theme)
     app.playButtons = [app.resetButton, app.homeButton, app.hintShowButton, app.hintFillButton]
 
+# Import necessary modules
+from itertools import combinations
+
 # Find cells with only one legal value
 def findObviousSingles(app):
     """Identify cells with only one legal value."""
@@ -72,6 +75,7 @@ def findObviousSingles(app):
 
 # Highlight single value cells
 def highlightSingle(app, singles):
+    """Highlight the first obvious single cell found."""
     if singles:
         row, col = singles[0]
         app.highlightedSingles = [(row, col)]
@@ -84,9 +88,17 @@ def applySingleHint(app, singles):
         legalValues = findLegalValues(app, row, col)
         if legalValues:
             value = legalValues.pop()
-            app.grid[row][col] = value
-            app.cellStatus[row][col] = 'correct'
-            return True
+
+            # Create a temporary grid to test the hint application
+            tempGrid = [row[:] for row in app.grid]
+            tempGrid[row][col] = value
+
+            # Check if the board is solvable and legal with the applied hint
+            if isBoardSolvable(tempGrid) and isBoardLegal(tempGrid):
+                # If solvable and legal, apply the changes to the actual grid
+                app.grid[row][col] = value
+                app.cellStatus[row][col] = 'correct'
+                return True
     return False
 
 # Find N cells in the region with exactly N unique legal values
@@ -115,15 +127,14 @@ def applyTupleHint(app, region, indices, unionLegals):
         row, col = region[i]
         tempGrid[row][col] = unionLegalsList[idx]  # Assign one of the possible values
 
-    # Check if the board is solvable with the applied hints
-    if isBoardSolvable(tempGrid):
-        # If solvable, apply the changes to the actual grid
+    # Check if the board is solvable and legal with the applied hints
+    if isBoardSolvable(tempGrid) and isBoardLegal(tempGrid):
+        # If solvable and legal, apply the changes to the actual grid
         for idx, i in enumerate(indices):
             row, col = region[i]
             app.grid[row][col] = unionLegalsList[idx]
             app.cellStatus[row][col] = 'correct'
             applied = True
-        print(f"Tuple hint applied at {[region[i] for i in indices]} with values {unionLegalsList}")  # Debugging output
 
     return applied
 
@@ -208,6 +219,109 @@ def fillHints(app):
 
     if not hint_applied:
         app.noHintAvailableTime = time.time()
+
+# Function to check if the board is legal
+def isBoardLegal(grid):
+    """Check if the given grid is legal."""
+    # Check rows for duplicates
+    for row in grid:
+        if not isUnique(row):
+            return False
+    
+    # Check columns for duplicates
+    for col in range(9):
+        column = [grid[row][col] for row in range(9)]
+        if not isUnique(column):
+            return False
+
+    # Check 3x3 blocks for duplicates
+    for blockRow in range(0, 9, 3):
+        for blockCol in range(0, 9, 3):
+            block = [grid[row][col] for row in range(blockRow, blockRow + 3) for col in range(blockCol, blockCol + 3)]
+            if not isUnique(block):
+                return False
+
+    return True
+
+def isUnique(values):
+    """Check if values contain duplicates, ignoring None."""
+    seen = set()
+    for value in values:
+        if value is not None:
+            if value in seen:
+                return False
+            seen.add(value)
+    return True
+
+# Example Sudoku solver for demonstration
+def isBoardSolvable(grid):
+    """Check if the board is solvable using a simple backtracking algorithm."""
+    empty = findEmptyCell(grid)
+    if not empty:
+        return True  # No empty cells, board is solved
+
+    row, col = empty
+
+    for num in range(1, 10):
+        if isValid(grid, row, col, num):
+            grid[row][col] = num
+
+            if isBoardSolvable(grid):
+                return True
+
+            grid[row][col] = None
+
+    return False
+
+def findEmptyCell(grid):
+    """Find an empty cell in the grid."""
+    for row in range(9):
+        for col in range(9):
+            if grid[row][col] is None:
+                return row, col
+    return None
+
+def isValid(grid, row, col, num):
+    """Check if num is a valid entry at grid[row][col]."""
+    # Check row
+    if num in grid[row]:
+        return False
+
+    # Check column
+    for r in range(9):
+        if grid[r][col] == num:
+            return False
+
+    # Check block
+    blockRow = (row // 3) * 3
+    blockCol = (col // 3) * 3
+    for r in range(blockRow, blockRow + 3):
+        for c in range(blockCol, blockCol + 3):
+            if grid[r][c] == num:
+                return False
+
+    return True
+
+# Find all legal values for a cell at (row, col)
+def findLegalValues(app, row, col):
+    """Find all legal values for a cell at (row, col)."""
+    if app.grid[row][col] is not None:
+        return set()
+
+    legalValues = set(range(1, 10))
+    for i in range(9):
+        if app.grid[row][i] is not None:
+            legalValues.discard(app.grid[row][i])
+        if app.grid[i][col] is not None:
+            legalValues.discard(app.grid[i][col])
+
+    blockRow, blockCol = 3 * (row // 3), 3 * (col // 3)
+    for i in range(blockRow, blockRow + 3):
+        for j in range(blockCol, blockCol + 3):
+            if app.grid[i][j] is not None:
+                legalValues.discard(app.grid[i][j])
+
+    return legalValues
 
 def displayNoHintsMessage(app):
     """Display a message if no hints are available."""

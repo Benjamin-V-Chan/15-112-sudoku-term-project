@@ -28,4 +28,5 @@ def drawGameOverTitle(app):
 
 def gameOver_onKeyPress(app, key):
     if key == 'h':
+        app.playMusic.pause()
         setActiveScreen('splash')
