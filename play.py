@@ -58,6 +58,7 @@ def setupPlayButtons(app):
     app.hintFillButton = Button(app.hintShowButton.x + app.menuBarButtonBuffer + buttonWidth, buttonY, buttonWidth, buttonHeight, 'Hint Fill', app.theme)
     app.playButtons = [app.resetButton, app.homeButton, app.hintShowButton, app.hintFillButton]
 
+# Find cells with only one legal value
 def findObviousSingles(app):
     """Identify cells with only one legal value."""
     singles = []
@@ -69,12 +70,13 @@ def findObviousSingles(app):
                     singles.append((row, col))
     return singles
 
+# Highlight single value cells
 def highlightSingle(app, singles):
-    """Highlight the cell with only one legal value."""
     if singles:
         row, col = singles[0]
         app.highlightedSingles = [(row, col)]
 
+# Apply the single hint by setting the cell's value
 def applySingleHint(app, singles):
     """Apply the single hint by setting the cell's value."""
     if singles:
@@ -87,9 +89,9 @@ def applySingleHint(app, singles):
             return True
     return False
 
+# Find N cells in the region with exactly N unique legal values
 def findObviousTuples(app, region):
     """Find N cells in the region with exactly N unique legal values."""
-    # List of cells in the region with each legal values
     cellsWithLegals = [(i, findLegalValues(app, region[i][0], region[i][1])) for i in range(len(region)) if app.grid[region[i][0]][region[i][1]] is None]
     
     for n in range(2, 5):
@@ -101,22 +103,27 @@ def findObviousTuples(app, region):
     return None
 
 def applyTupleHint(app, region, indices, unionLegals):
-    """Apply the tuple hint by assigning values to the grid."""
+    """Apply the tuple hint by assigning values to the grid if it keeps the board solvable."""
     applied = False
-    for i in indices:
+    unionLegalsList = list(unionLegals)  # Convert the set to a list for indexing
+
+    # Create a temporary grid to test the hint application
+    tempGrid = [row[:] for row in app.grid]
+
+    # Try assigning each legal value to one of the cells in the indices
+    for idx, i in enumerate(indices):
         row, col = region[i]
-        if len(unionLegals) == 1:
-            value = unionLegals.pop()
-            app.grid[row][col] = value
+        tempGrid[row][col] = unionLegalsList[idx]  # Assign one of the possible values
+
+    # Check if the board is solvable with the applied hints
+    if isBoardSolvable(tempGrid):
+        # If solvable, apply the changes to the actual grid
+        for idx, i in enumerate(indices):
+            row, col = region[i]
+            app.grid[row][col] = unionLegalsList[idx]
             app.cellStatus[row][col] = 'correct'
             applied = True
-        else:
-            for value in unionLegals:
-                if isValid(app.grid, row, col, value):
-                    app.grid[row][col] = value
-                    app.cellStatus[row][col] = 'correct'
-                    applied = True
-                    break
+        print(f"Tuple hint applied at {[region[i] for i in indices]} with values {unionLegalsList}")  # Debugging output
 
     return applied
 
@@ -126,7 +133,7 @@ def highlightTuple(app, indices, region):
     for i in indices:
         row, col = region[i]
         app.gridColors[row][col] = app.theme.tupleColor
-        app.highlightedTuples.append((row, col))  # Store the highlighted tuple for persistent highlighting
+        app.highlightedTuples.append((row, col))
 
 def show_hints(app):
     """Show hints by highlighting cells with singles or tuples."""
@@ -162,7 +169,8 @@ def show_hints(app):
                 highlightTuple(app, indices, block)
                 return
 
-def fill_hints(app):
+# Fill hints by applying singles or tuples
+def fillHints(app):
     """Fill hints by applying singles or tuples."""
     singles = findObviousSingles(app)
     if applySingleHint(app, singles):
@@ -171,6 +179,7 @@ def fill_hints(app):
     # If no singles, apply obvious tuples
     hint_applied = False
     for i in range(app.gridSize):
+
         # Apply tuples in rows
         row = [(i, j) for j in range(app.gridSize)]
         tuple_info = findObviousTuples(app, row)
@@ -185,7 +194,7 @@ def fill_hints(app):
         if tuple_info:
             indices, unionLegals = tuple_info
             if applyTupleHint(app, col, indices, unionLegals):
-                return
+                return 
 
         # Apply tuples in blocks
         blockRow = (i // 3) * 3
@@ -195,17 +204,16 @@ def fill_hints(app):
         if tuple_info:
             indices, unionLegals = tuple_info
             if applyTupleHint(app, block, indices, unionLegals):
-                return
+                return  # Exit after applying to one region
 
-    # If no hints applied, set the no-hint message
     if not hint_applied:
-        app.noHintAvailableTime = time.time()  # Start the timer for the no-hint message
+        app.noHintAvailableTime = time.time()
 
 def displayNoHintsMessage(app):
     """Display a message if no hints are available."""
     if app.noHintAvailableTime > 0:
         current_time = time.time()
-        if current_time - app.noHintAvailableTime < 1:  # Show the message for 1 second
+        if current_time - app.noHintAvailableTime < 1:
             drawLabel("No available hints", app.width / 2, app.height / 2, size=24, fill='red', align='center')
 
 def play_onStep(app):
@@ -239,7 +247,7 @@ def play_onMousePress(app, mouseX, mouseY):
             elif button.text == 'Hint Show':
                 show_hints(app)  # Highlight possible hints
             elif button.text == 'Hint Fill':
-                fill_hints(app)  # Fill in hints automatically
+                fillHints(app)  # Fill in hints automatically
             return
     app.highlightedRow, app.highlightedCol = getGridCell(app, mouseX, mouseY)
 
@@ -253,21 +261,47 @@ def play_onMouseMove(app, mouseX, mouseY):
 
 def play_onKeyPress(app, key):
     removeIncorrectGuesses(app)
-    if key in ['up', 'down', 'left', 'right']:
-        navigateGrid(app, key)
-    elif key.isdigit() and key != '0' and not app.isGuessMode and (app.cellStatus[app.highlightedRow][app.highlightedCol] not in ['correct', 'starting']):
+
+    # Check if logged in and use custom keybinds
+    if app.loggedIn and hasattr(app, 'userInfo') and hasattr(app.userInfo, 'keybinds'):
+        keybinds = app.userInfo.keybinds
+
+        # Use keybinds for navigation
+        if key == keybinds.get('up', 'up'):
+            navigateGrid(app, 'up')
+        elif key == keybinds.get('down', 'down'):
+            navigateGrid(app, 'down')
+        elif key == keybinds.get('left', 'left'):
+            navigateGrid(app, 'left')
+        elif key == keybinds.get('right', 'right'):
+            navigateGrid(app, 'right')
+    else:
+        # Default navigation keys
+        if key == 'up':
+            navigateGrid(app, 'up')
+        elif key == 'down':
+            navigateGrid(app, 'down')
+        elif key == 'left':
+            navigateGrid(app, 'left')
+        elif key == 'right':
+            navigateGrid(app, 'right')
+
+    # Handle number input for setting values
+    if key.isdigit() and key != '0':
         num = int(key)
-        if isValid(app.grid, app.highlightedRow, app.highlightedCol, num):
-            app.grid[app.highlightedRow][app.highlightedCol] = num
-            app.cellStatus[app.highlightedRow][app.highlightedCol] = 'correct'
-        else:
-            app.remainingLives -= 1
-            app.cellStatus[app.highlightedRow][app.highlightedCol] = 'incorrect'
-            app.grid[app.highlightedRow][app.highlightedCol] = None
-            app.tempIncorrect[(app.highlightedRow, app.highlightedCol)] = num
-        app.cellGuesses[app.highlightedRow][app.highlightedCol] = [None for _ in range(app.gridSize)]
-    elif key.isdigit() and key != '0' and app.isGuessMode and (app.cellStatus[app.highlightedRow][app.highlightedCol] not in ['correct', 'starting']):
-        app.cellGuesses[app.highlightedRow][app.highlightedCol][int(key) - 1] = int(key)
+        if not app.isGuessMode and app.cellStatus[app.highlightedRow][app.highlightedCol] not in ['correct', 'starting']:
+            if isValid(app.grid, app.highlightedRow, app.highlightedCol, num):
+                app.grid[app.highlightedRow][app.highlightedCol] = num
+                app.cellStatus[app.highlightedRow][app.highlightedCol] = 'correct'
+            else:
+                app.remainingLives -= 1
+                app.cellStatus[app.highlightedRow][app.highlightedCol] = 'incorrect'
+                app.grid[app.highlightedRow][app.highlightedCol] = None
+                app.tempIncorrect[(app.highlightedRow, app.highlightedCol)] = num
+            app.cellGuesses[app.highlightedRow][app.highlightedCol] = [None for _ in range(app.gridSize)]
+        elif app.isGuessMode and app.cellStatus[app.highlightedRow][app.highlightedCol] not in ['correct', 'starting']:
+            app.cellGuesses[app.highlightedRow][app.highlightedCol][int(key) - 1] = int(key)
+
     elif key == 'g':
         app.isGuessMode = not app.isGuessMode
         app.isManualGuessMode = False
@@ -394,14 +428,12 @@ def updateCellColors(app):
             elif app.cellStatus[row][col] == 'tuple':
                 app.gridColors[row][col] = app.theme.tupleColor
 
-    # Apply persistent highlighting for singles
     for row, col in app.highlightedSingles:
-        if app.cellStatus[row][col] != 'correct':  # Ensure it remains highlighted until status changes
+        if app.cellStatus[row][col] != 'correct':
             app.gridColors[row][col] = app.theme.singleGuessColor
 
-    # Apply persistent highlighting for tuples
     for row, col in app.highlightedTuples:
-        if app.cellStatus[row][col] != 'correct':  # Ensure it remains highlighted until status changes
+        if app.cellStatus[row][col] != 'correct':
             app.gridColors[row][col] = app.theme.tupleColor
 
     app.gridColors[app.highlightedRow][app.highlightedCol] = app.theme.highlightedColor
@@ -411,7 +443,7 @@ def play_redrawAll(app):
     drawGrid(app)
     drawGridBorder(app)
     drawMenuBar(app)
-    displayNoHintsMessage(app)  # Draw message if no hints are available
+    displayNoHintsMessage(app)
     for button in app.playButtons:
         button.draw()
 
@@ -434,37 +466,3 @@ def findLegalValues(app, row, col):
                 legalValues.discard(app.grid[i][j])
 
     return legalValues
-
-def isValid(grid, row, col, num):
-    """
-    Check if it's valid to place a number in a specific cell.
-    
-    Args:
-        grid (list of list of int): The Sudoku board represented as a 2D list.
-        row (int): The row index of the cell.
-        col (int): The column index of the cell.
-        num (int): The number to be placed in the cell.
-        
-    Returns:
-        bool: True if the number can be placed, False otherwise.
-    """
-    
-    # Check the row
-    for c in range(9):
-        if grid[row][c] == num:
-            return False
-
-    # Check the column
-    for r in range(9):
-        if grid[r][col] == num:
-            return False
-
-    # Check the 3x3 subgrid
-    startRow, startCol = 3 * (row // 3), 3 * (col // 3)
-    for r in range(startRow, startRow + 3):
-        for c in range(startCol, startCol + 3):
-            if grid[r][c] == num:
-                return False
-
-    # If no conflicts, return True
-    return True

@@ -2,6 +2,7 @@ from cmu_graphics import *
 from button import Button
 from user import *
 from functions import *
+import time
 
 def createAccount_onScreenActivate(app):
     setupCreateAccountScreen(app)
@@ -14,7 +15,7 @@ def setupCreateAccountScreen(app):
     app.createAccountButtonX = app.width / 2 - app.createAccountButtonWidth / 2
     app.createAccountButtonY = 200
     app.typingField = None
-    app.messageTimer = 0
+    app.messageStartTime = None
     resetCreateAccountInfo(app)
     setupCreateAccountScreenButtons(app)
 
@@ -46,12 +47,13 @@ def drawCreateAccountButtons(app):
         button.draw()
 
 def drawCreateAccountMessage(app):
-    messageX = app.width / 2
-    messageY = app.createAccountButtonY - 40
-    drawLabel(app.createAccountMessage, messageX, messageY, size=20, fill='red', align='center')
+    if app.createAccountMessage:
+        messageX = app.width / 2
+        messageY = app.createAccountButtonY - 40
+        drawLabel(app.createAccountMessage, messageX, messageY, size=20, fill='red', align='center')
 
 def createAccount_onMousePress(app, mouseX, mouseY):
-    if app.messageTimer > 0:
+    if app.messageStartTime is not None:
         return  # Disable user interaction when a message is active
 
     for button in app.createAccountAllButtons:
@@ -103,17 +105,19 @@ def handleCreateAccount(app):
         saveUserInfo(username, password, app.themeIndex, app.keybinds, app.muteVolume)
         app.userInfo = User(username)
         setActiveScreen('splash')
-        return  # Exit early since no error occurred
+        return 
 
-    # Set message timer if there was an error
-    app.messageTimer = 120  # 120 steps for 2 seconds at 60 FPS
+    app.messageStartTime = time.time()
 
 def createAccount_onStep(app):
-    if app.messageTimer > 0:
-        app.messageTimer -= 1
+    if app.messageStartTime is not None:
+        elapsed_time = time.time() - app.messageStartTime
+        if elapsed_time > 2:
+            app.messageStartTime = None
+            app.createAccountMessage = ''
 
 def createAccount_onKeyPress(app, key):
-    if app.messageTimer > 0:
+    if app.messageStartTime is not None:
         return  # Disable user interaction when a message is active
 
     if not (len(key) == 1 and (key.isalnum() or key in ['backspace', 'enter'])):
@@ -147,15 +151,15 @@ def handleTyping(app, key, field):
         app.passwordButton.text = app.createAccountPassword
 
 def createAccount_onMouseRelease(app, mouseX, mouseY):
-    if app.messageTimer > 0:
-        return  # Disable user interaction when a message is active
+    if app.messageStartTime is not None:
+        return
 
     for button in app.createAccountAllButtons:
         button.onRelease()
 
 def createAccount_onMouseMove(app, mouseX, mouseY):
-    if app.messageTimer > 0:
-        return  # Disable user interaction when a message is active
+    if app.messageStartTime is not None:
+        return
 
     for button in app.createAccountAllButtons:
         button.onHover(mouseX, mouseY)

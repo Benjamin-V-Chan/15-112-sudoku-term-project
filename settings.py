@@ -60,7 +60,8 @@ def settings_onMousePress(app, mouseX, mouseY):
                 setActiveScreen('keybinds')
             elif button.text == 'Mute Volume' or button.text == 'Unmute Volume':
                 app.muteVolume = not app.muteVolume
-                setupSettingsScreenButtons(app)  # Update buttons to reflect the mute status
+                app.muteVolumeButton = Button(app.settingButtonX, app.settingButtonY + 2 * (app.settingButtonHeight + app.settingButtonBuffer), app.settingButtonWidth, app.settingButtonHeight, 'Unmute Volume' if app.muteVolume else 'Mute Volume', app.theme)
+                # Update buttons to reflect the mute status
 
 def saveSettings(app):
     if app.loggedIn:

@@ -7,9 +7,9 @@ numbers = list(range(1, 10))
 startingNumbers = {
     'easy': 60,
     'medium': 50,
-    'hard': 40,
-    'expert': 30,
-    'evil': 20
+    'hard': 45,
+    'expert': 40,
+    'evil': 25
 }
 
 # Generate a board based on the difficulty

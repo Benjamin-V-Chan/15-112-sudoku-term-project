@@ -60,26 +60,21 @@ def drawPageContent(app, pageIndex):
         "Good luck and have fun!: Enjoy the game and challenge yourself!"
     ]
 
-    # Define the maximum characters per line
     maxCharsPerLine = 50
-
-    # Get the content for the current page
     content = pageContents[pageIndex]
 
-    # Split the title and text by the first occurrence of ':'
+    # Split title and text by the first occurrence of ':'
     if ':' in content:
         title, text = content.split(':', 1)
     else:
         # Default behavior if no colon is found
         title, text = content.split(' ', 1)
 
-    # Draw the title
     drawLabel(title.strip(), app.width / 2, topBoxHeight / 2, size=24, fill=app.theme.textColor, align='center')
 
-    # Split the remaining text into lines based on maxCharsPerLine
+    # Split remaining text into lines based on maxCharsPerLine
     lines = splitIntoLines(text.strip(), maxCharsPerLine)
 
-    # Draw each line of the content
     for i, line in enumerate(lines, start=0):
         y = line1Y + i * lineDistance
         drawLabel(line, app.width / 2, y, size=18, fill=app.theme.textColor, align='center')
