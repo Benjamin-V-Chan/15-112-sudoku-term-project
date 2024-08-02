@@ -146,9 +146,10 @@ def highlightTuple(app, indices, region):
         app.gridColors[row][col] = app.theme.tupleColor
         app.highlightedTuples.append((row, col))
 
-def show_hints(app):
+def showHints(app):
     """Show hints by highlighting cells with singles or tuples."""
     singles = findObviousSingles(app)
+    print(singles)
     if singles:
         highlightSingle(app, singles)
     else:
@@ -289,7 +290,7 @@ def play_onMousePress(app, mouseX, mouseY):
                 app.gameFinished = True
                 setActiveScreen('splash')
             elif button.text == 'Hint Show':
-                show_hints(app)  # Highlight possible hints
+                showHints(app)  # Highlight possible hints
             elif button.text == 'Hint Fill':
                 fillHints(app)  # Fill in hints automatically
             return
